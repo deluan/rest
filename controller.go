@@ -13,13 +13,14 @@ import (
 )
 
 /*
-REST Controller implementation, compatible with the JSON Server API "dialect". Please prefer to use the functions
-provided in the handler.go file instead of these.
- */
+Controller implements a set of RESTful handlers, compatible with the JSON Server API "dialect". Please prefer to use
+the functions provided in the handler.go file instead of these.
+*/
 type Controller struct {
 	Repository Repository
 }
 
+// Get handles the GET verb for individual items.
 func (c *Controller) Get(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(r.URL.Query().Get(":id"))
 	entity, err := c.Repository.Read(int64(id))
@@ -37,6 +38,7 @@ func (c *Controller) Get(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, 200, &entity)
 }
 
+// GetAll handles the GET verb for the full collection
 func (c *Controller) GetAll(w http.ResponseWriter, r *http.Request) {
 	options := c.parseOptions(r.URL.Query())
 	entities, err := c.Repository.ReadAll(options)
@@ -49,6 +51,7 @@ func (c *Controller) GetAll(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, 200, &entities)
 }
 
+// Put handles the PUT verb
 func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
 	entity := c.Repository.NewInstance()
 	decoder := json.NewDecoder(r.Body)
@@ -72,6 +75,7 @@ func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, 200, &entity)
 }
 
+// Post handles the POST verb
 func (c *Controller) Post(w http.ResponseWriter, r *http.Request) {
 	entity := c.Repository.NewInstance()
 	decoder := json.NewDecoder(r.Body)
@@ -89,6 +93,7 @@ func (c *Controller) Post(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, 200, &map[string]int64{"id": id})
 }
 
+// Delete handles the DELETE verb
 func (c *Controller) Delete(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(r.URL.Query().Get(":id"))
 	err := c.Repository.Delete(int64(id))

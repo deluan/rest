@@ -1,6 +1,6 @@
 /*
 Package rest provides a simple REST controller compatible with the JSON Server API "dialect". This package enables the
-creation of backends for the great Admin-on-rest package using pure Go, but can be used in other scenarios where you 
+creation of backends for the great Admin-on-rest package using pure Go, but can be used in other scenarios where you
 need a simple REST server for your data.
 
 To use it, you will need to provide an implementation of the Repository interface and a function to create
@@ -77,5 +77,5 @@ Example using chi router (https://github.com/go-chi/chi):
 For more info see:
 	JSON Server: https://github.com/typicode/json-server
 	admin-on-rest: https://marmelab.com/admin-on-rest/
- */
+*/
 package rest

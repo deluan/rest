@@ -3,7 +3,7 @@ package rest
 import "net/http"
 
 /*
-Handles the GET verb for individual items. Should be mapped to:
+Get handles the GET verb for individual items. Should be mapped to:
 GET /thing/:id
 */
 func Get(newRepository RepositoryConstructor) http.HandlerFunc {
@@ -14,7 +14,7 @@ func Get(newRepository RepositoryConstructor) http.HandlerFunc {
 }
 
 /*
-Handles the GET verb for the full collection. Should be mapped to:
+GetAll handles the GET verb for the full collection. Should be mapped to:
 GET /thing
 For all query options available, see https://github.com/typicode/json-server
 */
@@ -26,7 +26,7 @@ func GetAll(newRepository RepositoryConstructor) http.HandlerFunc {
 }
 
 /*
-Handles the POST verb. Should be mapped to:
+Post handles the POST verb. Should be mapped to:
 POST /thing
 */
 func Post(newRepository RepositoryConstructor) http.HandlerFunc {
@@ -37,7 +37,7 @@ func Post(newRepository RepositoryConstructor) http.HandlerFunc {
 }
 
 /*
-Handles the PUT verb. Should be mapped to:
+Put handles the PUT verb. Should be mapped to:
 PUT /thing/:id
 */
 func Put(newRepository RepositoryConstructor) http.HandlerFunc {
@@ -48,7 +48,7 @@ func Put(newRepository RepositoryConstructor) http.HandlerFunc {
 }
 
 /*
-Handles the DELETE verb. Should be mapped to:
+Delete handles the DELETE verb. Should be mapped to:
 DELETE /thing/:id
 */
 func Delete(newRepository RepositoryConstructor) http.HandlerFunc {

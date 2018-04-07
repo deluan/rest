@@ -8,7 +8,7 @@ import (
 /*
 Possible errors returned by a Repository implementation. Any error other than these will make the REST controller
 return a 500 http status code.
- */
+*/
 var (
 	// Will make the controller return a 404 error
 	ErrNotFound = errors.New("data not found")
@@ -18,9 +18,9 @@ var (
 )
 
 /*
-These are optional query options that can be received by Count and ReadAll and are used to implement pagination,
+QueryOptions are optional query parameters that can be received by Count and ReadAll and are used to implement pagination,
 sorting and filtering.
- */
+*/
 type QueryOptions struct {
 	// Comma separated list of fields to sort the data
 	Sort string
@@ -42,16 +42,16 @@ type QueryOptions struct {
 }
 
 /*
-The RepositoryConstructor needs to be implemented by your custom repository implementation, and it returns a fully
+RepositoryConstructor needs to be implemented by your custom repository implementation, and it returns a fully
 initialized repository. It is meant to be called on every HTTP request, so you shouldn't keep state in your repository,
 and it should execute fast. You have access to the current HTTP request's context.
- */
+*/
 type RepositoryConstructor func(ctx context.Context) Repository
 
 /*
-This is the interface that must be created for your data. See FakeRepository (in controller_test.go) for a simple
+Repository is the interface that must be created for your data. See FakeRepository (in controller_test.go) for a simple
 in-memory map-based example.
- */
+*/
 type Repository interface {
 	// Returns the number of entities that matches the criteria specified by the options
 	Count(options ...QueryOptions) (int64, error)

@@ -59,7 +59,7 @@ func TestController_GetAll(t *testing.T) {
 					}
 					So(response, ShouldHaveLength, 2)
 					for _, record := range response {
-						switch record.Id {
+						switch record.ID {
 						case idJoe:
 							So(record.Name, ShouldEqual, "Joe")
 							So(record.Age, ShouldEqual, 30)
@@ -132,7 +132,7 @@ func TestController_Get(t *testing.T) {
 					if err := json.Unmarshal([]byte(res.Body.String()), &response); err != nil {
 						panic(err)
 					}
-					So(response.Id, ShouldEqual, id)
+					So(response.ID, ShouldEqual, id)
 					So(response.Name, ShouldEqual, "Joe")
 					So(response.Age, ShouldEqual, 30)
 				})
@@ -359,7 +359,7 @@ func NewFakeRepository() *FakeRepository {
 }
 
 type FakeModel struct {
-	Id   int64
+	ID   int64
 	Name string
 	Age  int
 }
@@ -398,24 +398,24 @@ func (r *FakeRepository) Save(entity interface{}) (int64, error) {
 	}
 	rec := entity.(*FakeModel)
 	r.seq = r.seq + 1
-	rec.Id = r.seq
-	if _, ok := r.data[rec.Id]; ok {
+	rec.ID = r.seq
+	if _, ok := r.data[rec.ID]; ok {
 		return -1, errors.New("record already exists")
 	}
 
-	r.data[rec.Id] = *rec
-	return rec.Id, nil
+	r.data[rec.ID] = *rec
+	return rec.ID, nil
 }
 func (r *FakeRepository) Update(entity interface{}, cols ...string) error {
 	if r.err != nil {
 		return r.err
 	}
 	rec := entity.(*FakeModel)
-	if _, ok := r.data[rec.Id]; !ok {
+	if _, ok := r.data[rec.ID]; !ok {
 		return ErrNotFound
 	}
 
-	r.data[rec.Id] = *rec
+	r.data[rec.ID] = *rec
 	return nil
 }
 func (r *FakeRepository) Delete(id int64) error {
