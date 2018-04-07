@@ -15,6 +15,7 @@ func TestRespondWithJSON(t *testing.T) {
 		response := payload{123}
 		recorder := httptest.NewRecorder()
 		RespondWithJSON(recorder, 200, response)
+
 		Convey("It sets the right content-type", func() {
 			So(recorder.HeaderMap["Content-Type"], ShouldContain, "application/json")
 		})
@@ -27,6 +28,14 @@ func TestRespondWithJSON(t *testing.T) {
 				panic(err)
 			}
 			So(*actual, ShouldResemble, response)
+		})
+	})
+	Convey("Given an invalid payload", t, func() {
+		response := func() {}
+		recorder := httptest.NewRecorder()
+		err := RespondWithJSON(recorder, 200, response)
+		Convey("It returns an error", func() {
+			So(err, ShouldNotBeNil)
 		})
 	})
 }
