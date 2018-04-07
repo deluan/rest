@@ -69,7 +69,7 @@ func (r *SampleRepository) Save(entity interface{}) (int64, error) {
 	return rec.ID, nil
 }
 
-func (r *SampleRepository) Update(entity interface{}, cols ...string) error {
+func (r *SampleRepository) Update(entity interface{}) error {
 	if r.Error != nil {
 		return r.Error
 	}
