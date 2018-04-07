@@ -65,8 +65,8 @@ type Repository interface {
 	// Adds the entity to the repository and returns the newly created id
 	Save(entity interface{}) (int64, error)
 
-	// Updates the entity identified by entity.id.
-	Update(entity interface{}) error
+	// Updates the entity identified by id. Optionally select the fields to be updated
+	Update(entity interface{}, cols ...string) error
 
 	// Delete the entity identified by id
 	Delete(id int64) error
