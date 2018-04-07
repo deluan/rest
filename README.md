@@ -1,6 +1,6 @@
 # Simple Generic REST server
 
-[![Build Status](https://travis-ci.org/deluan/rest.svg?branch=master)](https://travis-ci.org/deluan/rest) [![Go Report Card](https://goreportcard.com/badge/github.com/deluan/rest)](https://goreportcard.com/report/github.com/deluan/rest) 
+[![Build Status](https://travis-ci.org/deluan/rest.svg?branch=master)](https://travis-ci.org/deluan/rest) [![Go Report Card](https://goreportcard.com/badge/github.com/deluan/rest)](https://goreportcard.com/report/github.com/deluan/rest) [![Coverage](http://gocover.io/_badge/github.com/deluan/rest)](http://gocover.io/github.com/deluan/rest)
 
 Package rest provides a simple REST controller compatible with the [JSON Server API](https://github.com/typicode/json-server) 
 "dialect". This package enables the creation of backends for the great [Admin-on-rest](https://marmelab.com/admin-on-rest/) 

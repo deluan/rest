@@ -11,6 +11,9 @@ install:
 script:
   - go test ./... -v
 
+aftter_success:
+  - curl http://gocover.io/github.com/deluan/rest > /dev/null
+
 notifications:
   email:
     - travis@deluan.com
