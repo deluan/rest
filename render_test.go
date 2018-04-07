@@ -32,9 +32,9 @@ func TestRespondWithJSON(t *testing.T) {
 }
 
 func TestRespondWithError(t *testing.T) {
-	Convey("Given a success payload", t, func() {
+	Convey("Given an error payload", t, func() {
 		recorder := httptest.NewRecorder()
-		RespondWithJSON(recorder, 400, "error message")
+		RespondWithError(recorder, 400, "error message")
 		Convey("It sets the right content-type", func() {
 			So(recorder.HeaderMap["Content-Type"], ShouldContain, "application/json")
 		})
@@ -42,7 +42,7 @@ func TestRespondWithError(t *testing.T) {
 			So(recorder.Code, ShouldEqual, 400)
 		})
 		Convey("It sends the payload", func() {
-			So(recorder.Body.String(), ShouldEqual, `"error message"`)
+			So(recorder.Body.String(), ShouldEqual, `{"error":"error message"}`)
 		})
 	})
 }
