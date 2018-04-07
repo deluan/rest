@@ -4,11 +4,14 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+var logger = logrus.New()
+
 func Test_parseOptions(t *testing.T) {
-	c := &Controller{}
+	c := &Controller{Logger: logger}
 
 	Convey("Given no params", t, func() {
 		options := c.parseOptions(url.Values{})
@@ -48,11 +51,23 @@ func Test_parseOptions(t *testing.T) {
 		params := url.Values{"_filters": []string{`{"name":"cecilia","age":"22"}`}}
 		options := c.parseOptions(params)
 
-		Convey("it  returns a proper filled QueryOptions struct", func() {
+		Convey("it returns a proper filled QueryOptions struct", func() {
 			So(options.Filters, ShouldHaveLength, 2)
 			So(options.Filters["name"], ShouldEqual, "cecilia")
 			So(options.Filters["age"], ShouldEqual, "22")
 		})
 	})
 
+	Convey("Given an invalid single filter param", t, func() {
+		params := url.Values{"_filters": []string{`{"name":"cecilia","age":MISSING_QUOTES}`}}
+		options := c.parseOptions(params)
+
+		Convey("it ignores the filter", func() {
+			So(options.Filters, ShouldHaveLength, 0)
+		})
+	})
+}
+
+func init() {
+	logger.SetLevel(logrus.FatalLevel)
 }
