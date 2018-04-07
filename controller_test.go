@@ -1,4 +1,4 @@
-package rest
+package rest_test
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/deluan/rest"
+	"github.com/deluan/rest/examples"
 	"github.com/sirupsen/logrus"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -18,11 +20,11 @@ var logger = logrus.New()
 
 func TestController_GetAll(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := NewFakeRepository()
-		controller := &Controller{repo, logger}
+		repo := examples.NewSampleRepository(nil)
+		controller := &rest.Controller{Repository: repo, Logger: logger}
 
 		Convey("When I call GetAll", func() {
-			req := httptest.NewRequest("GET", "/fake", nil)
+			req := httptest.NewRequest("GET", "/sample", nil)
 			res := httptest.NewRecorder()
 			controller.GetAll(res, req)
 
@@ -46,7 +48,7 @@ func TestController_GetAll(t *testing.T) {
 			idCecilia, _ := repo.Save(&cecilia)
 
 			Convey("And I call GetAll", func() {
-				req := httptest.NewRequest("GET", "/fake", nil)
+				req := httptest.NewRequest("GET", "/sample", nil)
 				res := httptest.NewRecorder()
 				controller.GetAll(res, req)
 
@@ -55,7 +57,7 @@ func TestController_GetAll(t *testing.T) {
 				})
 
 				Convey("It returns 2 records", func() {
-					response := make([]FakeModel, 0)
+					response := make([]examples.SampleModel, 0)
 					if err := json.Unmarshal([]byte(res.Body.String()), &response); err != nil {
 						panic(err)
 					}
@@ -81,8 +83,8 @@ func TestController_GetAll(t *testing.T) {
 		})
 
 		Convey("When the repository returns an error", func() {
-			repo.err = errors.New("unknown error")
-			req := httptest.NewRequest("GET", "/fake", nil)
+			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
+			req := httptest.NewRequest("GET", "/sample", nil)
 			res := httptest.NewRecorder()
 			controller.GetAll(res, req)
 
@@ -95,11 +97,11 @@ func TestController_GetAll(t *testing.T) {
 
 func TestController_Get(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := NewFakeRepository()
-		controller := &Controller{repo, logger}
+		repo := examples.NewSampleRepository(nil)
+		controller := &rest.Controller{Repository: repo, Logger: logger}
 
 		Convey("When I call Get id=1", func() {
-			req := httptest.NewRequest("GET", "/fake?:id=1", nil)
+			req := httptest.NewRequest("GET", "/sample?:id=1", nil)
 			res := httptest.NewRecorder()
 			controller.Get(res, req)
 
@@ -121,7 +123,7 @@ func TestController_Get(t *testing.T) {
 			id, _ := repo.Save(&joe)
 
 			Convey("And I call Get", func() {
-				req := httptest.NewRequest("GET", fmt.Sprintf("/fake?:id=%d", id), nil)
+				req := httptest.NewRequest("GET", fmt.Sprintf("/sample?:id=%d", id), nil)
 				res := httptest.NewRecorder()
 				controller.Get(res, req)
 
@@ -130,7 +132,7 @@ func TestController_Get(t *testing.T) {
 				})
 
 				Convey("It returns all data from the record", func() {
-					var response FakeModel
+					var response examples.SampleModel
 					if err := json.Unmarshal([]byte(res.Body.String()), &response); err != nil {
 						panic(err)
 					}
@@ -142,8 +144,8 @@ func TestController_Get(t *testing.T) {
 		})
 
 		Convey("When the repository returns an error", func() {
-			repo.err = errors.New("unknown error")
-			req := httptest.NewRequest("GET", "/fake?:id=1", nil)
+			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
+			req := httptest.NewRequest("GET", "/sample?:id=1", nil)
 			res := httptest.NewRecorder()
 			controller.Get(res, req)
 
@@ -164,11 +166,11 @@ func TestController_Get(t *testing.T) {
 
 func TestController_Delete(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := NewFakeRepository()
-		controller := &Controller{repo, logger}
+		repo := examples.NewSampleRepository(nil)
+		controller := &rest.Controller{repo, logger}
 
 		Convey("When I call Delete id=1", func() {
-			req := httptest.NewRequest("DELETE", "/fake?:id=1", nil)
+			req := httptest.NewRequest("DELETE", "/sample?:id=1", nil)
 			res := httptest.NewRecorder()
 			controller.Delete(res, req)
 
@@ -185,10 +187,32 @@ func TestController_Delete(t *testing.T) {
 			})
 		})
 
-		Convey("When the repository returns an error", func() {
-			repo.err = errors.New("unknown error")
+		Convey("When an item is added", func() {
+			joe := aRecord("Joe", 30)
+			id, err := repo.Save(&joe)
 
-			req := httptest.NewRequest("DELETE", "/fake?:id=1", aRecordReader("John Doe", 33))
+			So(err, ShouldBeNil)
+
+			Convey("And I call Put", func() {
+				req := httptest.NewRequest("DELETE", fmt.Sprintf("/sample?:id=%d", id), nil)
+				res := httptest.NewRecorder()
+				controller.Delete(res, req)
+
+				Convey("It returns 200 http status", func() {
+					So(res.Code, ShouldEqual, 200)
+				})
+
+				Convey("It deletes the record from the repository", func() {
+					_, err := repo.Read(id)
+					So(err, ShouldEqual, rest.ErrNotFound)
+				})
+			})
+		})
+
+		Convey("When the repository returns an error", func() {
+			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
+
+			req := httptest.NewRequest("DELETE", "/sample?:id=1", nil)
 			res := httptest.NewRecorder()
 			controller.Delete(res, req)
 
@@ -209,11 +233,11 @@ func TestController_Delete(t *testing.T) {
 
 func TestController_Put(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := NewFakeRepository()
-		controller := &Controller{repo, logger}
+		repo := examples.NewSampleRepository(nil)
+		controller := &rest.Controller{repo, logger}
 
 		Convey("When I call Put with an invalid request", func() {
-			req := httptest.NewRequest("PUT", "/fake?:id=1", nil)
+			req := httptest.NewRequest("PUT", "/sample?:id=1", nil)
 			res := httptest.NewRecorder()
 			controller.Put(res, req)
 
@@ -231,7 +255,7 @@ func TestController_Put(t *testing.T) {
 		})
 
 		Convey("When I call Put id=1", func() {
-			req := httptest.NewRequest("PUT", "/fake?:id=1", aRecordReader("John Doe", 33))
+			req := httptest.NewRequest("PUT", "/sample", aRecordReader(1, "John Doe", 33))
 			res := httptest.NewRecorder()
 			controller.Put(res, req)
 
@@ -248,9 +272,34 @@ func TestController_Put(t *testing.T) {
 			})
 		})
 
+		Convey("When an item is added", func() {
+			joe := aRecord("Joe", 30)
+			id, _ := repo.Save(&joe)
+
+			Convey("And I call Put", func() {
+				req := httptest.NewRequest("PUT", fmt.Sprintf("/sample?:id=%d", id), aRecordReader(id, "John", 31))
+				res := httptest.NewRecorder()
+				controller.Put(res, req)
+
+				Convey("It returns 200 http status", func() {
+					So(res.Code, ShouldEqual, 200)
+				})
+
+				Convey("It returns all data from the record", func() {
+					var response examples.SampleModel
+					if err := json.Unmarshal([]byte(res.Body.String()), &response); err != nil {
+						panic(err)
+					}
+					So(response.ID, ShouldEqual, id)
+					So(response.Name, ShouldEqual, "John")
+					So(response.Age, ShouldEqual, 31)
+				})
+			})
+		})
+
 		Convey("When the repository returns an error", func() {
-			repo.err = errors.New("unknown error")
-			req := httptest.NewRequest("PUT", "/fake?:id=1", aRecordReader("John Doe", 33))
+			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
+			req := httptest.NewRequest("PUT", "/sample", aRecordReader(1, "John Doe", 33))
 			res := httptest.NewRecorder()
 			controller.Put(res, req)
 
@@ -271,11 +320,11 @@ func TestController_Put(t *testing.T) {
 
 func TestController_Post(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := NewFakeRepository()
-		controller := &Controller{repo, logger}
+		repo := examples.NewSampleRepository(nil)
+		controller := &rest.Controller{repo, logger}
 
 		Convey("When I send valid data", func() {
-			req := httptest.NewRequest("POST", "/fake", aRecordReader("John Doe", 33))
+			req := httptest.NewRequest("POST", "/sample", aRecordReader(0, "John Doe", 33))
 			res := httptest.NewRecorder()
 			controller.Post(res, req)
 
@@ -296,12 +345,12 @@ func TestController_Post(t *testing.T) {
 				So(response, ShouldContainKey, "id")
 				id := response["id"]
 				r, _ := repo.Read(id)
-				So(r.(FakeModel).Name, ShouldEqual, "John Doe")
+				So(r.(examples.SampleModel).Name, ShouldEqual, "John Doe")
 			})
 		})
 
 		Convey("When I send invalid data", func() {
-			req := httptest.NewRequest("POST", "/fake", strings.NewReader("BAD DATA"))
+			req := httptest.NewRequest("POST", "/sample", strings.NewReader("BAD DATA"))
 			res := httptest.NewRecorder()
 			controller.Post(res, req)
 
@@ -316,9 +365,9 @@ func TestController_Post(t *testing.T) {
 		})
 
 		Convey("When the repository returns an error", func() {
-			repo.err = errors.New("unknown error")
+			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
 
-			req := httptest.NewRequest("POST", "/fake?:id=1", aRecordReader("John Doe", 33))
+			req := httptest.NewRequest("POST", "/sample", aRecordReader(0, "John Doe", 33))
 			res := httptest.NewRecorder()
 			controller.Post(res, req)
 
@@ -337,105 +386,18 @@ func TestController_Post(t *testing.T) {
 	})
 }
 
-func aRecord(name string, age int) FakeModel {
-	return FakeModel{Name: name, Age: age}
+func aRecord(name string, age int) examples.SampleModel {
+	return examples.SampleModel{Name: name, Age: age}
 }
 
-func aRecordReader(name string, age int) io.Reader {
+func aRecordReader(id int64, name string, age int) io.Reader {
 	r := aRecord(name, age)
+	r.ID = id
 	buf, err := json.Marshal(r)
 	if err != nil {
 		panic(err)
 	}
 	return bytes.NewReader(buf)
-}
-
-// ***********************************
-// * Fake Repository and Model
-// ***********************************
-
-func NewFakeRepository() *FakeRepository {
-	repo := FakeRepository{}
-	repo.data = make(map[int64]FakeModel)
-	return &repo
-}
-
-type FakeModel struct {
-	ID   int64
-	Name string
-	Age  int
-}
-
-type FakeRepository struct {
-	data map[int64]FakeModel
-	err  error
-	seq  int64
-}
-
-func (r *FakeRepository) Count(options ...QueryOptions) (int64, error) {
-	return int64(len(r.data)), r.err
-}
-func (r *FakeRepository) Read(id int64) (interface{}, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-	if data, ok := r.data[id]; ok {
-		return data, nil
-	}
-	return nil, ErrNotFound
-}
-func (r *FakeRepository) ReadAll(options ...QueryOptions) (interface{}, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-	dataSet := make([]FakeModel, 0)
-	for _, v := range r.data {
-		dataSet = append(dataSet, v)
-	}
-	return dataSet, nil
-}
-func (r *FakeRepository) Save(entity interface{}) (int64, error) {
-	if r.err != nil {
-		return 0, r.err
-	}
-	rec := entity.(*FakeModel)
-	r.seq = r.seq + 1
-	rec.ID = r.seq
-	if _, ok := r.data[rec.ID]; ok {
-		return -1, errors.New("record already exists")
-	}
-
-	r.data[rec.ID] = *rec
-	return rec.ID, nil
-}
-func (r *FakeRepository) Update(entity interface{}, cols ...string) error {
-	if r.err != nil {
-		return r.err
-	}
-	rec := entity.(*FakeModel)
-	if _, ok := r.data[rec.ID]; !ok {
-		return ErrNotFound
-	}
-
-	r.data[rec.ID] = *rec
-	return nil
-}
-func (r *FakeRepository) Delete(id int64) error {
-	if r.err != nil {
-		return r.err
-	}
-	if _, ok := r.data[id]; !ok {
-		return ErrNotFound
-	}
-
-	delete(r.data, id)
-	return nil
-}
-func (r *FakeRepository) EntityName() string {
-	return "fake"
-}
-func (r *FakeRepository) NewInstance() interface{} {
-	return &FakeModel{}
 }
 
 func init() {

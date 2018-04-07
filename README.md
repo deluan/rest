@@ -7,7 +7,7 @@ Package rest provides a simple REST controller compatible with the [JSON Server 
 framework using pure Go, but can be used in other scenarios where you need a simple REST server for your data.
 
 To use it, you will need to provide an implementation of the Repository interface and a function to create
-such repository.
+such repository. For a simple implementation of a in-memory repository, see `/examples/sample_repository.go`.
 
 The controller was created to be used with Gorilla Pat, as it requires URL params to be parsed and set
 as query params. You can easily adapt it to work with other routers and frameworks using a custom middleware.

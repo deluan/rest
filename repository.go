@@ -49,7 +49,7 @@ and it should execute fast. You have access to the current HTTP request's contex
 type RepositoryConstructor func(ctx context.Context) Repository
 
 /*
-Repository is the interface that must be created for your data. See FakeRepository (in controller_test.go) for a simple
+Repository is the interface that must be created for your data. See SampleRepository (in examples folder) for a simple
 in-memory map-based example.
 */
 type Repository interface {
@@ -74,6 +74,6 @@ type Repository interface {
 	// Return the entity name (used for logs and messages)
 	EntityName() string
 
-	// Returns a newly created instance. Can be as simple as return &Thing{}
+	// Returns a newly created instance. Should be as simple as return &Thing{}
 	NewInstance() interface{}
 }
