@@ -10,14 +10,16 @@ import (
 	"strings"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	. "github.com/smartystreets/goconvey/convey"
 )
+
+var logger = logrus.New()
 
 func TestController_GetAll(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
 		repo := NewFakeRepository()
-		controller := &Controller{repo}
+		controller := &Controller{repo, logger}
 
 		Convey("When I call GetAll", func() {
 			req := httptest.NewRequest("GET", "/fake", nil)
@@ -94,7 +96,7 @@ func TestController_GetAll(t *testing.T) {
 func TestController_Get(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
 		repo := NewFakeRepository()
-		controller := &Controller{repo}
+		controller := &Controller{repo, logger}
 
 		Convey("When I call Get id=1", func() {
 			req := httptest.NewRequest("GET", "/fake?:id=1", nil)
@@ -163,7 +165,7 @@ func TestController_Get(t *testing.T) {
 func TestController_Delete(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
 		repo := NewFakeRepository()
-		controller := &Controller{repo}
+		controller := &Controller{repo, logger}
 
 		Convey("When I call Delete id=1", func() {
 			req := httptest.NewRequest("DELETE", "/fake?:id=1", nil)
@@ -208,7 +210,7 @@ func TestController_Delete(t *testing.T) {
 func TestController_Put(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
 		repo := NewFakeRepository()
-		controller := &Controller{repo}
+		controller := &Controller{repo, logger}
 
 		Convey("When I call Put with an invalid request", func() {
 			req := httptest.NewRequest("PUT", "/fake?:id=1", nil)
@@ -270,7 +272,7 @@ func TestController_Put(t *testing.T) {
 func TestController_Post(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
 		repo := NewFakeRepository()
-		controller := &Controller{repo}
+		controller := &Controller{repo, logger}
 
 		Convey("When I send valid data", func() {
 			req := httptest.NewRequest("POST", "/fake", aRecordReader("John Doe", 33))
@@ -437,5 +439,5 @@ func (r *FakeRepository) NewInstance() interface{} {
 }
 
 func init() {
-	log.SetLevel(log.FatalLevel)
+	logger.SetLevel(logrus.FatalLevel)
 }

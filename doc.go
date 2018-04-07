@@ -9,6 +9,11 @@ such repository.
 The controller was created to be used with Gorilla Pat, as it requires URL params to be parsed and set
 as query params. You can easily adapt it to work with other routers and frameworks using a custom middleware.
 
+The functionality is provided by a set of handlers named after the REST verbs they handle: Get(), GetAll(), Put(),
+Post() and Delete(). Each of these functions receive a function used to construct your repository, and an optional
+implementation of Logger (compatible with Logrus). If no Logger is specified, the functions falls back to the default
+Go log package
+
 Example using Gorilla Pat (https://github.com/gorilla/pat):
 
 	func NewThingsRepository(ctx context) rest.Repository {

@@ -3,13 +3,12 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-
-	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -18,6 +17,7 @@ the functions provided in the handler.go file instead of these.
 */
 type Controller struct {
 	Repository Repository
+	Logger     Logger
 }
 
 // Get handles the GET verb for individual items.
@@ -26,12 +26,12 @@ func (c *Controller) Get(w http.ResponseWriter, r *http.Request) {
 	entity, err := c.Repository.Read(int64(id))
 	if err == ErrNotFound {
 		msg := fmt.Sprintf("%s(id:%d) not found", c.Repository.EntityName(), id)
-		log.Warn(msg)
+		c.warnf(msg)
 		RespondWithError(w, 404, msg)
 		return
 	}
 	if err != nil {
-		log.Errorf("reading %s(id:%d): %v", c.Repository.EntityName(), id, err)
+		c.errorf("reading %s(id:%d): %v", c.Repository.EntityName(), id, err)
 		RespondWithError(w, 500, err.Error())
 		return
 	}
@@ -43,7 +43,7 @@ func (c *Controller) GetAll(w http.ResponseWriter, r *http.Request) {
 	options := c.parseOptions(r.URL.Query())
 	entities, err := c.Repository.ReadAll(options)
 	if err != nil {
-		log.Errorf("Error reading %s: %v", c.Repository.EntityName(), err)
+		c.errorf("Error reading %s: %v", c.Repository.EntityName(), err)
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 	}
 	count, _ := c.Repository.Count(options)
@@ -56,19 +56,19 @@ func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
 	entity := c.Repository.NewInstance()
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(entity); err != nil {
-		log.Errorf("parsing %s %#v", c.Repository.EntityName(), err)
+		c.errorf("parsing %s %#v", c.Repository.EntityName(), err)
 		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
 		return
 	}
 	err := c.Repository.Update(entity)
 	if err == ErrNotFound {
 		msg := fmt.Sprintf("%s not found", c.Repository.EntityName())
-		log.Warn(msg)
+		c.warnf(msg)
 		RespondWithError(w, 404, msg)
 		return
 	}
 	if err != nil {
-		log.Errorf("updating %s: %v", c.Repository.EntityName(), err)
+		c.errorf("updating %s: %v", c.Repository.EntityName(), err)
 		RespondWithError(w, 500, err.Error())
 		return
 	}
@@ -80,13 +80,13 @@ func (c *Controller) Post(w http.ResponseWriter, r *http.Request) {
 	entity := c.Repository.NewInstance()
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(entity); err != nil {
-		log.Errorf("parsing %s %#v", c.Repository.EntityName(), err)
+		c.errorf("parsing %s %#v", c.Repository.EntityName(), err)
 		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
 		return
 	}
 	id, err := c.Repository.Save(entity)
 	if err != nil {
-		log.Errorf("saving %s %#v: %v", c.Repository.EntityName(), entity, err)
+		c.errorf("saving %s %#v: %v", c.Repository.EntityName(), entity, err)
 		RespondWithError(w, 500, err.Error())
 		return
 	}
@@ -99,12 +99,12 @@ func (c *Controller) Delete(w http.ResponseWriter, r *http.Request) {
 	err := c.Repository.Delete(int64(id))
 	if err == ErrNotFound {
 		msg := fmt.Sprintf("%s(id:%d) not found", c.Repository.EntityName(), id)
-		log.Warn(msg)
+		c.warnf(msg)
 		RespondWithError(w, 404, msg)
 		return
 	}
 	if err != nil {
-		log.Errorf("deleting %s(id:%d): %v", c.Repository.EntityName(), id, err)
+		c.errorf("deleting %s(id:%d): %v", c.Repository.EntityName(), id, err)
 		RespondWithError(w, 500, err.Error())
 		return
 	}
@@ -117,7 +117,7 @@ func (c *Controller) parseFilters(params url.Values) map[string]interface{} {
 	if filterStr != "" {
 		filterStr, _ = url.QueryUnescape(filterStr)
 		if err := json.Unmarshal([]byte(filterStr), &filters); err != nil {
-			log.Warnf("Invalid filter specification: %s - %v", filterStr, err)
+			c.warnf("Invalid filter specification: %s - %v", filterStr, err)
 		}
 	}
 	for k, v := range params {
@@ -142,5 +142,21 @@ func (c *Controller) parseOptions(params url.Values) QueryOptions {
 		Offset:  start,
 		Max:     int(math.Max(0, float64(end-start))),
 		Filters: c.parseFilters(params),
+	}
+}
+
+func (c *Controller) warnf(format string, args ...interface{}) {
+	if c.Logger != nil {
+		c.Logger.Warnf(format, args...)
+	} else {
+		log.Printf(format, args...)
+	}
+}
+
+func (c *Controller) errorf(format string, args ...interface{}) {
+	if c.Logger != nil {
+		c.Logger.Errorf(format, args...)
+	} else {
+		log.Printf(format, args...)
 	}
 }
