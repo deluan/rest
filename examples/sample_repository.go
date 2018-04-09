@@ -11,6 +11,7 @@ import (
 // * Sample Repository and Model
 // ***********************************
 
+// SampleRepository Constructor
 func NewSampleRepository(ctx context.Context, logger ...rest.Logger) rest.Repository {
 	repo := SampleRepository{Context: ctx}
 	repo.data = make(map[int64]SampleModel)
@@ -23,6 +24,7 @@ type SampleModel struct {
 	Age  int
 }
 
+// Simple in-memory repository implementation. NOTE: This repository does not handle QueryOptions
 type SampleRepository struct {
 	Context context.Context
 	Error   error
