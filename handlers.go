@@ -1,6 +1,9 @@
 package rest
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+)
 
 /*
 Get handles the GET verb for individual items. Should be mapped to:
@@ -8,10 +11,7 @@ GET /thing/:id
 */
 func Get(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := Controller{Repository: newRepository(r.Context())}
-		if len(logger) > 0 {
-			c.Logger = logger[0]
-		}
+		c := createController(newRepository, r.Context(), logger...)
 		c.Get(w, r)
 	}
 }
@@ -23,10 +23,7 @@ For all query options available, see https://github.com/typicode/json-server
 */
 func GetAll(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := Controller{Repository: newRepository(r.Context())}
-		if len(logger) > 0 {
-			c.Logger = logger[0]
-		}
+		c := createController(newRepository, r.Context(), logger...)
 		c.GetAll(w, r)
 	}
 }
@@ -37,10 +34,7 @@ POST /thing
 */
 func Post(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := Controller{Repository: newRepository(r.Context())}
-		if len(logger) > 0 {
-			c.Logger = logger[0]
-		}
+		c := createController(newRepository, r.Context(), logger...)
 		c.Post(w, r)
 	}
 }
@@ -51,10 +45,7 @@ PUT /thing/:id
 */
 func Put(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := Controller{Repository: newRepository(r.Context())}
-		if len(logger) > 0 {
-			c.Logger = logger[0]
-		}
+		c := createController(newRepository, r.Context(), logger...)
 		c.Put(w, r)
 	}
 }
@@ -65,10 +56,15 @@ DELETE /thing/:id
 */
 func Delete(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := Controller{Repository: newRepository(r.Context())}
-		if len(logger) > 0 {
-			c.Logger = logger[0]
-		}
+		c := createController(newRepository, r.Context(), logger...)
 		c.Delete(w, r)
 	}
+}
+
+func createController(newRepository RepositoryConstructor, ctx context.Context, logger ...Logger) Controller {
+	c := Controller{Repository: newRepository(ctx)}
+	if len(logger) > 0 {
+		c.Logger = logger[0]
+	}
+	return c
 }

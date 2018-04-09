@@ -12,7 +12,7 @@ import (
 // ***********************************
 
 func NewSampleRepository(ctx context.Context, logger ...rest.Logger) rest.Repository {
-	repo := SampleRepository{}
+	repo := SampleRepository{Context: ctx}
 	repo.data = make(map[int64]SampleModel)
 	return &repo
 }
@@ -24,9 +24,10 @@ type SampleModel struct {
 }
 
 type SampleRepository struct {
-	Error error
-	data  map[int64]SampleModel
-	seq   int64
+	Context context.Context
+	Error   error
+	data    map[int64]SampleModel
+	seq     int64
 }
 
 func (r *SampleRepository) Count(options ...rest.QueryOptions) (int64, error) {
@@ -101,4 +102,3 @@ func (r *SampleRepository) EntityName() string {
 func (r *SampleRepository) NewInstance() interface{} {
 	return &SampleModel{}
 }
-

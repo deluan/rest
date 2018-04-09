@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -19,14 +20,32 @@ import (
 
 var logger = logrus.New()
 
+type handlerWrapper = func (rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
+
+func createHandler(wrapper handlerWrapper) (http.HandlerFunc, rest.Repository) {
+	repo := examples.NewSampleRepository(nil)
+	handler := wrapper(
+		func(ctx context.Context) rest.Repository {
+			repo.(*examples.SampleRepository).Context = ctx
+			return repo
+		}, logger)
+	return handler, repo
+}
+
+func createRequestResponse(method, target string, body io.Reader) (*http.Request, *httptest.ResponseRecorder) {
+	req := httptest.NewRequest(method, target, body)
+	res := httptest.NewRecorder()
+	ctx := context.WithValue(context.Background(), "test_key", "test_value")
+
+	return req.WithContext(ctx), res
+}
+
 func TestController_GetAll(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := examples.NewSampleRepository(nil)
-		handler := rest.GetAll(func(ctx context.Context) rest.Repository { return repo }, logger)
+		handler, repo := createHandler(rest.GetAll)
 
 		Convey("When I call GetAll", func() {
-			req := httptest.NewRequest("GET", "/sample", nil)
-			res := httptest.NewRecorder()
+			req, res := createRequestResponse("GET", "/sample", nil)
 			handler(res, req)
 
 			Convey("It returns 200 http status", func() {
@@ -40,6 +59,11 @@ func TestController_GetAll(t *testing.T) {
 			Convey("It returns 0 in the X-Total-Count header", func() {
 				So(res.HeaderMap["X-Total-Count"][0], ShouldEqual, "0")
 			})
+
+			Convey("It passes down the context", func() {
+				r := repo.(*examples.SampleRepository)
+				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+			})
 		})
 
 		Convey("When two items are added", func() {
@@ -49,8 +73,7 @@ func TestController_GetAll(t *testing.T) {
 			idCecilia, _ := repo.Save(&cecilia)
 
 			Convey("And I call GetAll", func() {
-				req := httptest.NewRequest("GET", "/sample", nil)
-				res := httptest.NewRecorder()
+				req, res := createRequestResponse("GET", "/sample", nil)
 				handler(res, req)
 
 				Convey("It returns 200 http status", func() {
@@ -85,8 +108,8 @@ func TestController_GetAll(t *testing.T) {
 
 		Convey("When the repository returns an error", func() {
 			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
-			req := httptest.NewRequest("GET", "/sample", nil)
-			res := httptest.NewRecorder()
+
+			req, res := createRequestResponse("GET", "/sample", nil)
 			handler(res, req)
 
 			Convey("It returns 500 http status", func() {
@@ -98,12 +121,10 @@ func TestController_GetAll(t *testing.T) {
 
 func TestController_Get(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := examples.NewSampleRepository(nil)
-		handler := rest.Get(func(ctx context.Context) rest.Repository { return repo }, logger)
+		handler, repo := createHandler(rest.Get)
 
 		Convey("When I call Get id=1", func() {
-			req := httptest.NewRequest("GET", "/sample?:id=1", nil)
-			res := httptest.NewRecorder()
+			req, res := createRequestResponse("GET", "/sample?:id=1", nil)
 			handler(res, req)
 
 			Convey("It returns 404 http status", func() {
@@ -117,6 +138,11 @@ func TestController_Get(t *testing.T) {
 				}
 				So(response, ShouldContainKey, "error")
 			})
+
+			Convey("It passes down the context", func() {
+				r := repo.(*examples.SampleRepository)
+				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+			})
 		})
 
 		Convey("When an item is added", func() {
@@ -124,8 +150,7 @@ func TestController_Get(t *testing.T) {
 			id, _ := repo.Save(&joe)
 
 			Convey("And I call Get", func() {
-				req := httptest.NewRequest("GET", fmt.Sprintf("/sample?:id=%d", id), nil)
-				res := httptest.NewRecorder()
+				req, res := createRequestResponse("GET", fmt.Sprintf("/sample?:id=%d", id), nil)
 				handler(res, req)
 
 				Convey("It returns 200 http status", func() {
@@ -146,8 +171,8 @@ func TestController_Get(t *testing.T) {
 
 		Convey("When the repository returns an error", func() {
 			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
-			req := httptest.NewRequest("GET", "/sample?:id=1", nil)
-			res := httptest.NewRecorder()
+
+			req, res := createRequestResponse("GET", "/sample?:id=1", nil)
 			handler(res, req)
 
 			Convey("It returns 500 http status", func() {
@@ -167,13 +192,11 @@ func TestController_Get(t *testing.T) {
 
 func TestController_Delete(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := examples.NewSampleRepository(nil)
-		handler := rest.Delete(func(ctx context.Context) rest.Repository { return repo }, logger)
+		handler, repo := createHandler(rest.Delete)
 
 
 		Convey("When I call Delete id=1", func() {
-			req := httptest.NewRequest("DELETE", "/sample?:id=1", nil)
-			res := httptest.NewRecorder()
+			req, res := createRequestResponse("DELETE", "/sample?:id=1", nil)
 			handler(res, req)
 
 			Convey("It returns 404 http status", func() {
@@ -187,6 +210,11 @@ func TestController_Delete(t *testing.T) {
 				}
 				So(response, ShouldContainKey, "error")
 			})
+
+			Convey("It passes down the context", func() {
+				r := repo.(*examples.SampleRepository)
+				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+			})
 		})
 
 		Convey("When an item is added", func() {
@@ -196,8 +224,7 @@ func TestController_Delete(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("And I call Delete", func() {
-				req := httptest.NewRequest("DELETE", fmt.Sprintf("/sample?:id=%d", id), nil)
-				res := httptest.NewRecorder()
+				req, res := createRequestResponse("DELETE", fmt.Sprintf("/sample?:id=%d", id), nil)
 				handler(res, req)
 
 				Convey("It returns 200 http status", func() {
@@ -214,8 +241,7 @@ func TestController_Delete(t *testing.T) {
 		Convey("When the repository returns an error", func() {
 			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
 
-			req := httptest.NewRequest("DELETE", "/sample?:id=1", nil)
-			res := httptest.NewRecorder()
+			req, res := createRequestResponse("DELETE", "/sample?:id=1", nil)
 			handler(res, req)
 
 			Convey("It returns 500 http status", func() {
@@ -235,12 +261,10 @@ func TestController_Delete(t *testing.T) {
 
 func TestController_Put(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := examples.NewSampleRepository(nil)
-		handler := rest.Put(func(ctx context.Context) rest.Repository { return repo }, logger)
+		handler, repo := createHandler(rest.Put)
 
 		Convey("When I call Put with an invalid request", func() {
-			req := httptest.NewRequest("PUT", "/sample?:id=1", nil)
-			res := httptest.NewRecorder()
+			req, res := createRequestResponse("PUT", "/sample?:id=1", nil)
 			handler(res, req)
 
 			Convey("It returns 422 http status", func() {
@@ -254,11 +278,15 @@ func TestController_Put(t *testing.T) {
 				}
 				So(response, ShouldContainKey, "error")
 			})
+
+			Convey("It passes down the context", func() {
+				r := repo.(*examples.SampleRepository)
+				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+			})
 		})
 
 		Convey("When I call Put id=1", func() {
-			req := httptest.NewRequest("PUT", "/sample", aRecordReader(1, "John Doe", 33))
-			res := httptest.NewRecorder()
+			req, res := createRequestResponse("PUT", "/sample", aRecordReader(1, "John Doe", 33))
 			handler(res, req)
 
 			Convey("It returns 404 http status", func() {
@@ -279,8 +307,7 @@ func TestController_Put(t *testing.T) {
 			id, _ := repo.Save(&joe)
 
 			Convey("And I call Put", func() {
-				req := httptest.NewRequest("PUT", "/sample", aRecordReader(id, "John", 31))
-				res := httptest.NewRecorder()
+				req, res := createRequestResponse("PUT", "/sample", aRecordReader(id, "John", 31))
 				handler(res, req)
 
 				Convey("It returns 200 http status", func() {
@@ -301,8 +328,8 @@ func TestController_Put(t *testing.T) {
 
 		Convey("When the repository returns an error", func() {
 			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
-			req := httptest.NewRequest("PUT", "/sample", aRecordReader(1, "John Doe", 33))
-			res := httptest.NewRecorder()
+
+			req, res := createRequestResponse("PUT", "/sample", aRecordReader(1, "John Doe", 33))
 			handler(res, req)
 
 			Convey("It returns 500 http status", func() {
@@ -322,12 +349,10 @@ func TestController_Put(t *testing.T) {
 
 func TestController_Post(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		repo := examples.NewSampleRepository(nil)
-		handler := rest.Post(func(ctx context.Context) rest.Repository { return repo }, logger)
+		handler, repo := createHandler(rest.Post)
 
 		Convey("When I send valid data", func() {
-			req := httptest.NewRequest("POST", "/sample", aRecordReader(0, "John Doe", 33))
-			res := httptest.NewRecorder()
+			req, res := createRequestResponse("POST", "/sample", aRecordReader(0, "John Doe", 33))
 			handler(res, req)
 
 			Convey("It returns 200 http status", func() {
@@ -349,11 +374,15 @@ func TestController_Post(t *testing.T) {
 				r, _ := repo.Read(id)
 				So(r.(examples.SampleModel).Name, ShouldEqual, "John Doe")
 			})
+
+			Convey("It passes down the context", func() {
+				r := repo.(*examples.SampleRepository)
+				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+			})
 		})
 
 		Convey("When I send invalid data", func() {
-			req := httptest.NewRequest("POST", "/sample", strings.NewReader("BAD DATA"))
-			res := httptest.NewRecorder()
+			req, res := createRequestResponse("POST", "/sample", strings.NewReader("BAD DATA"))
 			handler(res, req)
 
 			Convey("It returns 422 http status", func() {
@@ -369,8 +398,7 @@ func TestController_Post(t *testing.T) {
 		Convey("When the repository returns an error", func() {
 			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
 
-			req := httptest.NewRequest("POST", "/sample", aRecordReader(0, "John Doe", 33))
-			res := httptest.NewRecorder()
+			req, res := createRequestResponse("POST", "/sample", aRecordReader(0, "John Doe", 33))
 			handler(res, req)
 
 			Convey("It returns 500 http status", func() {
