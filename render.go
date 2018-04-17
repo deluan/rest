@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// RespondWithError returns an error message formatted as an JSON object, and sets the http status to code
+// RespondWithError returns an error message formatted as a JSON object, and sets the http status to code
 func RespondWithError(w http.ResponseWriter, code int, message string) error {
 	return RespondWithJSON(w, code, map[string]string{"error": message})
 }
