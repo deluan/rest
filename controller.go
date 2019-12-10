@@ -22,16 +22,16 @@ type Controller struct {
 
 // Get handles the GET verb for individual items.
 func (c *Controller) Get(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(r.URL.Query().Get(":id"))
-	entity, err := c.Repository.Read(int64(id))
+	id := r.URL.Query().Get(":id")
+	entity, err := c.Repository.Read(id)
 	if err == ErrNotFound {
-		msg := fmt.Sprintf("%s(id:%d) not found", c.Repository.EntityName(), id)
+		msg := fmt.Sprintf("%s(id:%s) not found", c.Repository.EntityName(), id)
 		c.warnf(msg)
 		RespondWithError(w, 404, msg)
 		return
 	}
 	if err != nil {
-		c.errorf("reading %s(id:%d): %v", c.Repository.EntityName(), id, err)
+		c.errorf("reading %s(id:%s): %v", c.Repository.EntityName(), id, err)
 		RespondWithError(w, 500, err.Error())
 		return
 	}
@@ -90,21 +90,21 @@ func (c *Controller) Post(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, 500, err.Error())
 		return
 	}
-	RespondWithJSON(w, 200, &map[string]int64{"id": id})
+	RespondWithJSON(w, 200, &map[string]string{"id": id})
 }
 
 // Delete handles the DELETE verb
 func (c *Controller) Delete(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(r.URL.Query().Get(":id"))
-	err := c.Repository.Delete(int64(id))
+	id := r.URL.Query().Get(":id")
+	err := c.Repository.Delete(id)
 	if err == ErrNotFound {
-		msg := fmt.Sprintf("%s(id:%d) not found", c.Repository.EntityName(), id)
+		msg := fmt.Sprintf("%s(id:%s) not found", c.Repository.EntityName(), id)
 		c.warnf(msg)
 		RespondWithError(w, 404, msg)
 		return
 	}
 	if err != nil {
-		c.errorf("deleting %s(id:%d): %v", c.Repository.EntityName(), id, err)
+		c.errorf("deleting %s(id:%s): %v", c.Repository.EntityName(), id, err)
 		RespondWithError(w, 500, err.Error())
 		return
 	}

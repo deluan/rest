@@ -20,7 +20,7 @@ import (
 
 var logger = logrus.New()
 
-type handlerWrapper = func (rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
+type handlerWrapper = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
 func createHandler(wrapper handlerWrapper) (http.HandlerFunc, rest.Repository) {
 	repo := examples.NewSampleRepository(nil)
@@ -150,7 +150,7 @@ func TestController_Get(t *testing.T) {
 			id, _ := repo.Save(&joe)
 
 			Convey("And I call Get", func() {
-				req, res := createRequestResponse("GET", fmt.Sprintf("/sample?:id=%d", id), nil)
+				req, res := createRequestResponse("GET", fmt.Sprintf("/sample?:id=%s", id), nil)
 				handler(res, req)
 
 				Convey("It returns 200 http status", func() {
@@ -194,7 +194,6 @@ func TestController_Delete(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
 		handler, repo := createHandler(rest.Delete)
 
-
 		Convey("When I call Delete id=1", func() {
 			req, res := createRequestResponse("DELETE", "/sample?:id=1", nil)
 			handler(res, req)
@@ -224,7 +223,7 @@ func TestController_Delete(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("And I call Delete", func() {
-				req, res := createRequestResponse("DELETE", fmt.Sprintf("/sample?:id=%d", id), nil)
+				req, res := createRequestResponse("DELETE", fmt.Sprintf("/sample?:id=%s", id), nil)
 				handler(res, req)
 
 				Convey("It returns 200 http status", func() {
@@ -286,7 +285,7 @@ func TestController_Put(t *testing.T) {
 		})
 
 		Convey("When I call Put id=1", func() {
-			req, res := createRequestResponse("PUT", "/sample", aRecordReader(1, "John Doe", 33))
+			req, res := createRequestResponse("PUT", "/sample", aRecordReader("1", "John Doe", 33))
 			handler(res, req)
 
 			Convey("It returns 404 http status", func() {
@@ -329,7 +328,7 @@ func TestController_Put(t *testing.T) {
 		Convey("When the repository returns an error", func() {
 			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
 
-			req, res := createRequestResponse("PUT", "/sample", aRecordReader(1, "John Doe", 33))
+			req, res := createRequestResponse("PUT", "/sample", aRecordReader("1", "John Doe", 33))
 			handler(res, req)
 
 			Convey("It returns 500 http status", func() {
@@ -352,7 +351,7 @@ func TestController_Post(t *testing.T) {
 		handler, repo := createHandler(rest.Post)
 
 		Convey("When I send valid data", func() {
-			req, res := createRequestResponse("POST", "/sample", aRecordReader(0, "John Doe", 33))
+			req, res := createRequestResponse("POST", "/sample", aRecordReader("0", "John Doe", 33))
 			handler(res, req)
 
 			Convey("It returns 200 http status", func() {
@@ -365,7 +364,7 @@ func TestController_Post(t *testing.T) {
 			})
 
 			Convey("It returns the new id in the response", func() {
-				var response map[string]int64
+				var response map[string]string
 				if err := json.Unmarshal([]byte(res.Body.String()), &response); err != nil {
 					panic(err)
 				}
@@ -398,7 +397,7 @@ func TestController_Post(t *testing.T) {
 		Convey("When the repository returns an error", func() {
 			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
 
-			req, res := createRequestResponse("POST", "/sample", aRecordReader(0, "John Doe", 33))
+			req, res := createRequestResponse("POST", "/sample", aRecordReader("0", "John Doe", 33))
 			handler(res, req)
 
 			Convey("It returns 500 http status", func() {
@@ -420,7 +419,7 @@ func aRecord(name string, age int) examples.SampleModel {
 	return examples.SampleModel{Name: name, Age: age}
 }
 
-func aRecordReader(id int64, name string, age int) io.Reader {
+func aRecordReader(id string, name string, age int) io.Reader {
 	r := aRecord(name, age)
 	r.ID = id
 	buf, err := json.Marshal(r)

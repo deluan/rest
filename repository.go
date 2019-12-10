@@ -57,19 +57,19 @@ type Repository interface {
 	Count(options ...QueryOptions) (int64, error)
 
 	// Returns the entity identified by id
-	Read(id int64) (interface{}, error)
+	Read(id string) (interface{}, error)
 
 	// Returns a slice of entities that matches the criteria specified by the options
 	ReadAll(options ...QueryOptions) (interface{}, error)
 
 	// Adds the entity to the repository and returns the newly created id
-	Save(entity interface{}) (int64, error)
+	Save(entity interface{}) (string, error)
 
 	// Updates the entity identified by id. Optionally select the fields to be updated
 	Update(entity interface{}, cols ...string) error
 
 	// Delete the entity identified by id
-	Delete(id int64) error
+	Delete(id string) error
 
 	// Return the entity name (used for logs and messages)
 	EntityName() string

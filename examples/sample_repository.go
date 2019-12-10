@@ -3,6 +3,7 @@ package examples
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"github.com/deluan/rest"
 )
@@ -14,12 +15,12 @@ import (
 // SampleRepository Constructor
 func NewSampleRepository(ctx context.Context, logger ...rest.Logger) rest.Repository {
 	repo := SampleRepository{Context: ctx}
-	repo.data = make(map[int64]SampleModel)
+	repo.data = make(map[string]SampleModel)
 	return &repo
 }
 
 type SampleModel struct {
-	ID   int64
+	ID   string
 	Name string
 	Age  int
 }
@@ -28,7 +29,7 @@ type SampleModel struct {
 type SampleRepository struct {
 	Context context.Context
 	Error   error
-	data    map[int64]SampleModel
+	data    map[string]SampleModel
 	seq     int64
 }
 
@@ -36,7 +37,7 @@ func (r *SampleRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	return int64(len(r.data)), r.Error
 }
 
-func (r *SampleRepository) Read(id int64) (interface{}, error) {
+func (r *SampleRepository) Read(id string) (interface{}, error) {
 	if r.Error != nil {
 		return nil, r.Error
 	}
@@ -57,15 +58,15 @@ func (r *SampleRepository) ReadAll(options ...rest.QueryOptions) (interface{}, e
 	return dataSet, nil
 }
 
-func (r *SampleRepository) Save(entity interface{}) (int64, error) {
+func (r *SampleRepository) Save(entity interface{}) (string, error) {
 	if r.Error != nil {
-		return 0, r.Error
+		return "", r.Error
 	}
 	rec := entity.(*SampleModel)
 	r.seq = r.seq + 1
-	rec.ID = r.seq
+	rec.ID = strconv.FormatInt(r.seq, 10)
 	if _, ok := r.data[rec.ID]; ok {
-		return -1, errors.New("record already exists")
+		return "", errors.New("record already exists")
 	}
 
 	r.data[rec.ID] = *rec
@@ -85,7 +86,7 @@ func (r *SampleRepository) Update(entity interface{}, cols ...string) error {
 	return nil
 }
 
-func (r *SampleRepository) Delete(id int64) error {
+func (r *SampleRepository) Delete(id string) error {
 	if r.Error != nil {
 		return r.Error
 	}
