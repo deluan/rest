@@ -7,7 +7,7 @@
 [![Coverage](http://gocover.io/_badge/github.com/deluan/rest)](http://gocover.io/github.com/deluan/rest)
 
 This package provides a simple REST controller compatible with the [JSON Server API](https://github.com/typicode/json-server)
-"dialect". This package enables the creation of backends for the great [Admin-on-rest](https://marmelab.com/admin-on-rest/)
+"dialect". This package enables the creation of backends for the great [React-admin](https://marmelab.com/react-admin/)
 framework using pure Go, but can be used in other scenarios where you need a simple REST server for your data.
 
 To use it, you will need to provide an implementation of the Repository interface and a function to create
