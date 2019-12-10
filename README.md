@@ -1,22 +1,25 @@
 # Simple Generic REST controller
 
-[![Build Status](https://travis-ci.org/deluan/rest.svg?branch=master)](https://travis-ci.org/deluan/rest) [![Go Report Card](https://goreportcard.com/badge/github.com/deluan/rest)](https://goreportcard.com/report/github.com/deluan/rest) [![GoDoc](https://godoc.org/github.com/deluan/rest?status.svg)](https://godoc.org/github.com/deluan/rest)
-[![Maintainability](https://api.codeclimate.com/v1/badges/6837751f9b4305e56843/maintainability)](https://codeclimate.com/github/deluan/rest/maintainability) [![Test Coverage](https://api.codeclimate.com/v1/badges/6837751f9b4305e56843/test_coverage)](https://codeclimate.com/github/deluan/rest/test_coverage)
+[![Build Status](https://github.com/deluan/rest/workflows/CI/badge.svg)](https://github.com/deluan/rest/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/deluan/rest)](https://goreportcard.com/report/github.com/deluan/rest)
+[![GoDoc](https://godoc.org/github.com/deluan/rest?status.svg)](https://godoc.org/github.com/deluan/rest)
+[![Maintainability](https://api.codeclimate.com/v1/badges/6837751f9b4305e56843/maintainability)](https://codeclimate.com/github/deluan/rest/maintainability)
+[![Coverage](http://gocover.io/_badge/github.com/deluan/rest)](http://gocover.io/github.com/deluan/rest)
 
-This package provides a simple REST controller compatible with the [JSON Server API](https://github.com/typicode/json-server) 
-"dialect". This package enables the creation of backends for the great [Admin-on-rest](https://marmelab.com/admin-on-rest/) 
+This package provides a simple REST controller compatible with the [JSON Server API](https://github.com/typicode/json-server)
+"dialect". This package enables the creation of backends for the great [Admin-on-rest](https://marmelab.com/admin-on-rest/)
 framework using pure Go, but can be used in other scenarios where you need a simple REST server for your data.
 
 To use it, you will need to provide an implementation of the Repository interface and a function to create
-such repository (the constructor). For a simple implementation of an in-memory repository, see 
+such repository (the constructor). For a simple implementation of an in-memory repository, see
 [`/examples/sample_repository.go`](https://github.com/deluan/rest/blob/master/examples/sample_repository.go).
 
-The controller was created to be used with [Gorilla Pat](https://github.com/gorilla/pat), as it requires URL params to 
+The controller was created to be used with [Gorilla Pat](https://github.com/gorilla/pat), as it requires URL params to
 be parsed and set as query params. You can easily adapt it to work with other routers and frameworks using a custom middleware.
 
 The functionality is provided by a set of handlers named after the REST verbs they handle: `Get()`, `GetAll()`, `Put()`,
 `Post()` and `Delete()`. Each of these functions receive a constructor for your repository, and an optional
-implementation of the Logger interface (compatible with [Logrus](https://github.com/sirupsen/logrus)). If no Logger is 
+implementation of the Logger interface (compatible with [Logrus](https://github.com/sirupsen/logrus)). If no Logger is
 specified, the functions falls back to the default Go log package.
 
 Example using [Gorilla Pat](https://github.com/gorilla/pat):
