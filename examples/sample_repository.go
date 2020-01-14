@@ -12,8 +12,13 @@ import (
 // * Sample Repository and Model
 // ***********************************
 
+type ReadWriteRepository interface {
+	rest.Repository
+	rest.Persistable
+}
+
 // SampleRepository Constructor
-func NewSampleRepository(ctx context.Context, logger ...rest.Logger) rest.Repository {
+func NewSampleRepository(ctx context.Context, logger ...rest.Logger) *SampleRepository {
 	repo := SampleRepository{Context: ctx}
 	repo.data = make(map[string]SampleModel)
 	return &repo
@@ -58,7 +63,26 @@ func (r *SampleRepository) ReadAll(options ...rest.QueryOptions) (interface{}, e
 	return dataSet, nil
 }
 
-func (r *SampleRepository) Save(entity interface{}) (string, error) {
+func (r *SampleRepository) EntityName() string {
+	return "sample"
+}
+
+func (r *SampleRepository) NewInstance() interface{} {
+	return &SampleModel{}
+}
+
+func NewPersistableSampleRepository(ctx context.Context, logger ...rest.Logger) *PersistableSampleRepository {
+	repo := PersistableSampleRepository{}
+	repo.Context = ctx
+	repo.data = make(map[string]SampleModel)
+	return &repo
+}
+
+type PersistableSampleRepository struct {
+	SampleRepository
+}
+
+func (r *PersistableSampleRepository) Save(entity interface{}) (string, error) {
 	if r.Error != nil {
 		return "", r.Error
 	}
@@ -73,7 +97,7 @@ func (r *SampleRepository) Save(entity interface{}) (string, error) {
 	return rec.ID, nil
 }
 
-func (r *SampleRepository) Update(entity interface{}, cols ...string) error {
+func (r *PersistableSampleRepository) Update(entity interface{}, cols ...string) error {
 	if r.Error != nil {
 		return r.Error
 	}
@@ -86,7 +110,7 @@ func (r *SampleRepository) Update(entity interface{}, cols ...string) error {
 	return nil
 }
 
-func (r *SampleRepository) Delete(id string) error {
+func (r *PersistableSampleRepository) Delete(id string) error {
 	if r.Error != nil {
 		return r.Error
 	}
@@ -96,12 +120,4 @@ func (r *SampleRepository) Delete(id string) error {
 
 	delete(r.data, id)
 	return nil
-}
-
-func (r *SampleRepository) EntityName() string {
-	return "sample"
-}
-
-func (r *SampleRepository) NewInstance() interface{} {
-	return &SampleModel{}
 }

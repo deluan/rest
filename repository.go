@@ -62,6 +62,19 @@ type Repository interface {
 	// Returns a slice of entities that matches the criteria specified by the options
 	ReadAll(options ...QueryOptions) (interface{}, error)
 
+	// Return the entity name (used for logs and messages)
+	EntityName() string
+
+	// Returns a newly created instance. Should be as simple as return &Thing{}
+	NewInstance() interface{}
+}
+
+/*
+Persistable must be implemented by repositories in adition to the Repository interface, to allow the POST,
+PUT and DELETE methods. If this interface is not implemented by the repository, calls to these methods will
+return 405 - Method Not Allowed
+*/
+type Persistable interface {
 	// Adds the entity to the repository and returns the newly created id
 	Save(entity interface{}) (string, error)
 
@@ -70,10 +83,4 @@ type Repository interface {
 
 	// Delete the entity identified by id
 	Delete(id string) error
-
-	// Return the entity name (used for logs and messages)
-	EntityName() string
-
-	// Returns a newly created instance. Should be as simple as return &Thing{}
-	NewInstance() interface{}
 }

@@ -22,11 +22,21 @@ var logger = logrus.New()
 
 type handlerWrapper = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
-func createHandler(wrapper handlerWrapper) (http.HandlerFunc, rest.Repository) {
+func createPersistableHandler(wrapper handlerWrapper) (http.HandlerFunc, *examples.PersistableSampleRepository) {
+	repo := examples.NewPersistableSampleRepository(nil)
+	handler := wrapper(
+		func(ctx context.Context) rest.Repository {
+			repo.Context = ctx
+			return repo
+		}, logger)
+	return handler, repo
+}
+
+func createReadOnlyHandler(wrapper handlerWrapper) (http.HandlerFunc, *examples.SampleRepository) {
 	repo := examples.NewSampleRepository(nil)
 	handler := wrapper(
 		func(ctx context.Context) rest.Repository {
-			repo.(*examples.SampleRepository).Context = ctx
+			repo.Context = ctx
 			return repo
 		}, logger)
 	return handler, repo
@@ -42,7 +52,7 @@ func createRequestResponse(method, target string, body io.Reader) (*http.Request
 
 func TestController_GetAll(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		handler, repo := createHandler(rest.GetAll)
+		handler, repo := createPersistableHandler(rest.GetAll)
 
 		Convey("When I call GetAll", func() {
 			req, res := createRequestResponse("GET", "/sample", nil)
@@ -61,8 +71,7 @@ func TestController_GetAll(t *testing.T) {
 			})
 
 			Convey("It passes down the context", func() {
-				r := repo.(*examples.SampleRepository)
-				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+				So(repo.Context.Value("test_key"), ShouldEqual, "test_value")
 			})
 		})
 
@@ -107,7 +116,7 @@ func TestController_GetAll(t *testing.T) {
 		})
 
 		Convey("When the repository returns an error", func() {
-			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
+			repo.Error = errors.New("unknown error")
 
 			req, res := createRequestResponse("GET", "/sample", nil)
 			handler(res, req)
@@ -121,7 +130,7 @@ func TestController_GetAll(t *testing.T) {
 
 func TestController_Get(t *testing.T) {
 	Convey("Given an empty repository", t, func() {
-		handler, repo := createHandler(rest.Get)
+		handler, repo := createPersistableHandler(rest.Get)
 
 		Convey("When I call Get id=1", func() {
 			req, res := createRequestResponse("GET", "/sample?:id=1", nil)
@@ -140,8 +149,7 @@ func TestController_Get(t *testing.T) {
 			})
 
 			Convey("It passes down the context", func() {
-				r := repo.(*examples.SampleRepository)
-				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+				So(repo.Context.Value("test_key"), ShouldEqual, "test_value")
 			})
 		})
 
@@ -170,7 +178,7 @@ func TestController_Get(t *testing.T) {
 		})
 
 		Convey("When the repository returns an error", func() {
-			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
+			repo.Error = errors.New("unknown error")
 
 			req, res := createRequestResponse("GET", "/sample?:id=1", nil)
 			handler(res, req)
@@ -191,8 +199,20 @@ func TestController_Get(t *testing.T) {
 }
 
 func TestController_Delete(t *testing.T) {
+	Convey("Given a read-only repository", t, func() {
+		handler, _ := createReadOnlyHandler(rest.Delete)
+		Convey("When I call Delete id=1", func() {
+			req, res := createRequestResponse("DELETE", "/sample?:id=1", nil)
+			handler(res, req)
+
+			Convey("It returns 405 http status", func() {
+				So(res.Code, ShouldEqual, 405)
+			})
+		})
+	})
+
 	Convey("Given an empty repository", t, func() {
-		handler, repo := createHandler(rest.Delete)
+		handler, repo := createPersistableHandler(rest.Delete)
 
 		Convey("When I call Delete id=1", func() {
 			req, res := createRequestResponse("DELETE", "/sample?:id=1", nil)
@@ -211,8 +231,7 @@ func TestController_Delete(t *testing.T) {
 			})
 
 			Convey("It passes down the context", func() {
-				r := repo.(*examples.SampleRepository)
-				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+				So(repo.Context.Value("test_key"), ShouldEqual, "test_value")
 			})
 		})
 
@@ -238,7 +257,7 @@ func TestController_Delete(t *testing.T) {
 		})
 
 		Convey("When the repository returns an error", func() {
-			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
+			repo.Error = errors.New("unknown error")
 
 			req, res := createRequestResponse("DELETE", "/sample?:id=1", nil)
 			handler(res, req)
@@ -259,8 +278,20 @@ func TestController_Delete(t *testing.T) {
 }
 
 func TestController_Put(t *testing.T) {
+	Convey("Given a read-only repository", t, func() {
+		handler, _ := createReadOnlyHandler(rest.Delete)
+		Convey("When I call Put id=1", func() {
+			req, res := createRequestResponse("PUT", "/sample?:id=1", nil)
+			handler(res, req)
+
+			Convey("It returns 405 http status", func() {
+				So(res.Code, ShouldEqual, 405)
+			})
+		})
+	})
+
 	Convey("Given an empty repository", t, func() {
-		handler, repo := createHandler(rest.Put)
+		handler, repo := createPersistableHandler(rest.Put)
 
 		Convey("When I call Put with an invalid request", func() {
 			req, res := createRequestResponse("PUT", "/sample?:id=1", nil)
@@ -279,8 +310,7 @@ func TestController_Put(t *testing.T) {
 			})
 
 			Convey("It passes down the context", func() {
-				r := repo.(*examples.SampleRepository)
-				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+				So(repo.Context.Value("test_key"), ShouldEqual, "test_value")
 			})
 		})
 
@@ -326,7 +356,7 @@ func TestController_Put(t *testing.T) {
 		})
 
 		Convey("When the repository returns an error", func() {
-			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
+			repo.Error = errors.New("unknown error")
 
 			req, res := createRequestResponse("PUT", "/sample", aRecordReader("1", "John Doe", 33))
 			handler(res, req)
@@ -347,8 +377,20 @@ func TestController_Put(t *testing.T) {
 }
 
 func TestController_Post(t *testing.T) {
+	Convey("Given a read-only repository", t, func() {
+		handler, _ := createReadOnlyHandler(rest.Delete)
+		Convey("When I send valid data", func() {
+			req, res := createRequestResponse("POST", "/sample", aRecordReader("0", "John Doe", 33))
+			handler(res, req)
+
+			Convey("It returns 405 http status", func() {
+				So(res.Code, ShouldEqual, 405)
+			})
+		})
+	})
+
 	Convey("Given an empty repository", t, func() {
-		handler, repo := createHandler(rest.Post)
+		handler, repo := createPersistableHandler(rest.Post)
 
 		Convey("When I send valid data", func() {
 			req, res := createRequestResponse("POST", "/sample", aRecordReader("0", "John Doe", 33))
@@ -375,8 +417,7 @@ func TestController_Post(t *testing.T) {
 			})
 
 			Convey("It passes down the context", func() {
-				r := repo.(*examples.SampleRepository)
-				So(r.Context.Value("test_key"), ShouldEqual, "test_value")
+				So(repo.Context.Value("test_key"), ShouldEqual, "test_value")
 			})
 		})
 
@@ -395,7 +436,7 @@ func TestController_Post(t *testing.T) {
 		})
 
 		Convey("When the repository returns an error", func() {
-			repo.(*examples.SampleRepository).Error = errors.New("unknown error")
+			repo.Error = errors.New("unknown error")
 
 			req, res := createRequestResponse("POST", "/sample", aRecordReader("0", "John Doe", 33))
 			handler(res, req)

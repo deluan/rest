@@ -53,6 +53,11 @@ func (c *Controller) GetAll(w http.ResponseWriter, r *http.Request) {
 
 // Put handles the PUT verb
 func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
+	rp, ok := c.Repository.(Persistable)
+	if !ok {
+		RespondWithError(w, 405, "405 Method Not Allowed")
+		return
+	}
 	entity := c.Repository.NewInstance()
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(entity); err != nil {
@@ -60,7 +65,7 @@ func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
 		return
 	}
-	err := c.Repository.Update(entity)
+	err := rp.Update(entity)
 	if err == ErrNotFound {
 		msg := fmt.Sprintf("%s not found", c.Repository.EntityName())
 		c.warnf(msg)
@@ -77,6 +82,11 @@ func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
 
 // Post handles the POST verb
 func (c *Controller) Post(w http.ResponseWriter, r *http.Request) {
+	rp, ok := c.Repository.(Persistable)
+	if !ok {
+		RespondWithError(w, 405, "405 Method Not Allowed")
+		return
+	}
 	entity := c.Repository.NewInstance()
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(entity); err != nil {
@@ -84,7 +94,7 @@ func (c *Controller) Post(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
 		return
 	}
-	id, err := c.Repository.Save(entity)
+	id, err := rp.Save(entity)
 	if err != nil {
 		c.errorf("saving %s %#v: %v", c.Repository.EntityName(), entity, err)
 		RespondWithError(w, 500, err.Error())
@@ -95,8 +105,13 @@ func (c *Controller) Post(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles the DELETE verb
 func (c *Controller) Delete(w http.ResponseWriter, r *http.Request) {
+	rp, ok := c.Repository.(Persistable)
+	if !ok {
+		RespondWithError(w, 405, "405 Method Not Allowed")
+		return
+	}
 	id := r.URL.Query().Get(":id")
-	err := c.Repository.Delete(id)
+	err := rp.Delete(id)
 	if err == ErrNotFound {
 		msg := fmt.Sprintf("%s(id:%s) not found", c.Repository.EntityName(), id)
 		c.warnf(msg)
