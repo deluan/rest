@@ -139,7 +139,11 @@ func (c *Controller) parseFilters(params url.Values) map[string]interface{} {
 		if strings.HasPrefix(k, "_") {
 			continue
 		}
-		filters[k] = v[0]
+		if len(v) == 1 {
+			filters[k] = v[0]
+		} else {
+			filters[k] = v
+		}
 	}
 	return filters
 }
