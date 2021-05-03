@@ -2,19 +2,6 @@ package rest
 
 import (
 	"context"
-	"errors"
-)
-
-/*
-Possible errors returned by a Repository implementation. Any error other than these will make the REST controller
-return a 500 http status code.
-*/
-var (
-	// Will make the controller return a 404 error
-	ErrNotFound = errors.New("data not found")
-
-	// Will make the controller return a 403 error
-	ErrPermissionDenied = errors.New("permission denied")
 )
 
 /*

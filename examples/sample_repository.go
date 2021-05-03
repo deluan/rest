@@ -17,7 +17,7 @@ type ReadWriteRepository interface {
 	rest.Persistable
 }
 
-// SampleRepository Constructor
+// NewSampleRepository returns a new SampleRepository
 func NewSampleRepository(ctx context.Context, logger ...rest.Logger) *SampleRepository {
 	repo := SampleRepository{Context: ctx}
 	repo.data = make(map[string]SampleModel)
@@ -30,7 +30,7 @@ type SampleModel struct {
 	Age  int
 }
 
-// Simple in-memory repository implementation. NOTE: This repository does not handle QueryOptions
+// SampleRepository is a simple in-memory repository implementation. NOTE: This repository does not handle QueryOptions
 type SampleRepository struct {
 	Context context.Context
 	Error   error

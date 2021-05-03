@@ -67,7 +67,7 @@ func TestController_GetAll(t *testing.T) {
 			})
 
 			Convey("It returns 0 in the X-Total-Count header", func() {
-				So(res.HeaderMap["X-Total-Count"][0], ShouldEqual, "0")
+				So(res.Header()["X-Total-Count"][0], ShouldEqual, "0")
 			})
 
 			Convey("It passes down the context", func() {
@@ -110,8 +110,19 @@ func TestController_GetAll(t *testing.T) {
 				})
 
 				Convey("It returns 2 in the X-Total-Count header", func() {
-					So(res.HeaderMap["X-Total-Count"][0], ShouldEqual, "2")
+					So(res.Header()["X-Total-Count"][0], ShouldEqual, "2")
 				})
+			})
+		})
+
+		Convey("When the repository returns a ErrPermissionDenied", func() {
+			repo.Error = rest.ErrPermissionDenied
+
+			req, res := createRequestResponse("GET", "/sample", nil)
+			handler(res, req)
+
+			Convey("It returns 403 http status", func() {
+				So(res.Code, ShouldEqual, 403)
 			})
 		})
 
@@ -174,6 +185,17 @@ func TestController_Get(t *testing.T) {
 					So(response.Name, ShouldEqual, "Joe")
 					So(response.Age, ShouldEqual, 30)
 				})
+			})
+		})
+
+		Convey("When the repository returns a ErrPermissionDenied", func() {
+			repo.Error = rest.ErrPermissionDenied
+
+			req, res := createRequestResponse("GET", "/sample?:id=1", nil)
+			handler(res, req)
+
+			Convey("It returns 403 http status", func() {
+				So(res.Code, ShouldEqual, 403)
 			})
 		})
 
@@ -253,6 +275,17 @@ func TestController_Delete(t *testing.T) {
 					_, err := repo.Read(id)
 					So(err, ShouldEqual, rest.ErrNotFound)
 				})
+			})
+		})
+
+		Convey("When the repository returns a ErrPermissionDenied", func() {
+			repo.Error = rest.ErrPermissionDenied
+
+			req, res := createRequestResponse("DELETE", "/sample?:id=1", nil)
+			handler(res, req)
+
+			Convey("It returns 403 http status", func() {
+				So(res.Code, ShouldEqual, 403)
 			})
 		})
 
@@ -355,6 +388,38 @@ func TestController_Put(t *testing.T) {
 			})
 		})
 
+		Convey("When the repository returns a ErrPermissionDenied", func() {
+			repo.Error = rest.ErrPermissionDenied
+
+			req, res := createRequestResponse("PUT", "/sample", aRecordReader("1", "John Doe", 33))
+			handler(res, req)
+
+			Convey("It returns 403 http status", func() {
+				So(res.Code, ShouldEqual, 403)
+			})
+		})
+
+		Convey("When the repository returns a ValidationError", func() {
+			repo.Error = &rest.ValidationError{Errors: map[string]string{
+				"field1": "not_valid",
+			}}
+
+			req, res := createRequestResponse("PUT", "/sample", aRecordReader("1", "John Doe", 33))
+			handler(res, req)
+
+			Convey("It returns 400 http status", func() {
+				So(res.Code, ShouldEqual, 400)
+			})
+
+			Convey("It returns a list of errors in the body", func() {
+				var parsed map[string]map[string]string
+				_ = json.Unmarshal(res.Body.Bytes(), &parsed)
+				So(parsed, ShouldContainKey, "errors")
+				So(parsed["errors"], ShouldContainKey, "field1")
+				So(parsed["errors"]["field1"], ShouldEqual, "not_valid")
+			})
+		})
+
 		Convey("When the repository returns an error", func() {
 			repo.Error = errors.New("unknown error")
 
@@ -432,6 +497,38 @@ func TestController_Post(t *testing.T) {
 			Convey("It does not adds any data to the repo", func() {
 				count, _ := repo.Count()
 				So(count, ShouldEqual, 0)
+			})
+		})
+
+		Convey("When the repository returns a ErrPermissionDenied", func() {
+			repo.Error = rest.ErrPermissionDenied
+
+			req, res := createRequestResponse("POST", "/sample", aRecordReader("0", "John Doe", 33))
+			handler(res, req)
+
+			Convey("It returns 403 http status", func() {
+				So(res.Code, ShouldEqual, 403)
+			})
+		})
+
+		Convey("When the repository returns a ValidationError", func() {
+			repo.Error = &rest.ValidationError{Errors: map[string]string{
+				"field1": "not_valid",
+			}}
+
+			req, res := createRequestResponse("POST", "/sample", aRecordReader("0", "John Doe", 33))
+			handler(res, req)
+
+			Convey("It returns 400 http status", func() {
+				So(res.Code, ShouldEqual, 400)
+			})
+
+			Convey("It returns a list of errors in the body", func() {
+				var parsed map[string]map[string]string
+				_ = json.Unmarshal(res.Body.Bytes(), &parsed)
+				So(parsed, ShouldContainKey, "errors")
+				So(parsed["errors"], ShouldContainKey, "field1")
+				So(parsed["errors"]["field1"], ShouldEqual, "not_valid")
 			})
 		})
 
