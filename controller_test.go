@@ -348,7 +348,7 @@ func TestController_Put(t *testing.T) {
 		})
 
 		Convey("When I call Put id=1", func() {
-			req, res := createRequestResponse("PUT", "/sample", aRecordReader("1", "John Doe", 33))
+			req, res := createRequestResponse("PUT", "/sample?:id=1", aRecordReader("1", "John Doe", 33))
 			handler(res, req)
 
 			Convey("It returns 404 http status", func() {
@@ -369,7 +369,7 @@ func TestController_Put(t *testing.T) {
 			id, _ := repo.Save(&joe)
 
 			Convey("And I call Put", func() {
-				req, res := createRequestResponse("PUT", "/sample", aRecordReader(id, "John", 31))
+				req, res := createRequestResponse("PUT", "/sample?:id="+id, aRecordReader(id, "John", 31))
 				handler(res, req)
 
 				Convey("It returns 200 http status", func() {

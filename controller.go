@@ -1,8 +1,11 @@
 package rest
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -69,14 +72,28 @@ func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusMethodNotAllowed, "405 Method Not Allowed")
 		return
 	}
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		c.errorf("reading body for %s %#v", c.Repository.EntityName(), err)
+		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
+		return
+	}
+	r.Body.Close()
 	entity := c.Repository.NewInstance()
-	decoder := json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(ioutil.NopCloser(bytes.NewBuffer(bodyBytes)))
 	if err := decoder.Decode(entity); err != nil {
 		c.errorf("parsing %s %#v", c.Repository.EntityName(), err)
 		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
 		return
 	}
-	err := rp.Update(entity)
+	fields, err := c.getFieldNames(bodyBytes)
+	if err != nil {
+		c.errorf("parsing %s %#v", c.Repository.EntityName(), err)
+		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
+		return
+	}
+	id := r.URL.Query().Get(":id")
+	err = rp.Update(id, entity, fields...)
 	switch {
 	case err == ErrNotFound:
 		msg := fmt.Sprintf("%s not found", c.Repository.EntityName())
@@ -98,7 +115,19 @@ func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, &entity)
+	c.Get(w, r)
+}
+
+func (c *Controller) getFieldNames(bytes []byte) ([]string, error) {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(bytes, &m); err != nil {
+		return nil, err
+	}
+	var fields []string
+	for k := range m {
+		fields = append(fields, k)
+	}
+	return fields, nil
 }
 
 // Post handles the POST verb

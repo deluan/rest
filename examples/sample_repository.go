@@ -97,7 +97,7 @@ func (r *PersistableSampleRepository) Save(entity interface{}) (string, error) {
 	return rec.ID, nil
 }
 
-func (r *PersistableSampleRepository) Update(entity interface{}, cols ...string) error {
+func (r *PersistableSampleRepository) Update(id string, entity interface{}, cols ...string) error {
 	if r.Error != nil {
 		return r.Error
 	}

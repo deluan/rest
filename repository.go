@@ -66,7 +66,7 @@ type Persistable interface {
 	Save(entity interface{}) (string, error)
 
 	// Updates the entity identified by id. Optionally select the fields to be updated
-	Update(entity interface{}, cols ...string) error
+	Update(id string, entity interface{}, cols ...string) error
 
 	// Delete the entity identified by id
 	Delete(id string) error
