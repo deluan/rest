@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -72,7 +71,7 @@ func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusMethodNotAllowed, "405 Method Not Allowed")
 		return
 	}
-	bodyBytes, err := io.ReadAll(r.Body)
+	bodyBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		c.errorf("reading body for %s %#v", c.Repository.EntityName(), err)
 		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
