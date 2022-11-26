@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"sync"
+	"sync/atomic"
 
 	"github.com/deluan/rest"
 )
@@ -12,16 +14,9 @@ import (
 // * Sample Repository and Model
 // ***********************************
 
-type ReadWriteRepository interface {
-	rest.Repository
-	rest.Persistable
-}
-
 // NewSampleRepository returns a new SampleRepository
-func NewSampleRepository(ctx context.Context, logger ...rest.Logger) *SampleRepository {
-	repo := SampleRepository{Context: ctx}
-	repo.data = make(map[string]SampleModel)
-	return &repo
+func NewSampleRepository() *SampleRepository {
+	return &SampleRepository{}
 }
 
 type SampleModel struct {
@@ -32,92 +27,116 @@ type SampleModel struct {
 
 // SampleRepository is a simple in-memory repository implementation. NOTE: This repository does not handle QueryOptions
 type SampleRepository struct {
-	Context context.Context
-	Error   error
-	data    map[string]SampleModel
-	seq     int64
+	err  atomic.Pointer[error]
+	seq  atomic.Int64
+	data sync.Map
 }
 
-func (r *SampleRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return int64(len(r.data)), r.Error
+// SetError simulates an error by forcing all methods to return the specified error
+func (r *SampleRepository) SetError(err error) {
+	r.err.Store(&err)
 }
 
-func (r *SampleRepository) Read(id string) (interface{}, error) {
-	if r.Error != nil {
-		return nil, r.Error
+// error is a helper method to simplify access to the err atomic value
+func (r *SampleRepository) error() error {
+	err := r.err.Load()
+	if err != nil {
+		return *err
 	}
-	if data, ok := r.data[id]; ok {
-		return data, nil
+	return nil
+}
+
+func (r *SampleRepository) Count(_ context.Context, _ ...rest.QueryOptions) (int64, error) {
+	count := 0
+	r.data.Range(func(_, _ any) bool {
+		count++
+		return true
+	})
+	return int64(count), r.error()
+}
+
+func (r *SampleRepository) Read(_ context.Context, id string) (*SampleModel, error) {
+	if err := r.error(); err != nil {
+		return nil, err
+	}
+	if data, ok := r.data.Load(id); ok {
+		entity := data.(SampleModel)
+		return &entity, nil
 	}
 	return nil, rest.ErrNotFound
 }
 
-func (r *SampleRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	if r.Error != nil {
-		return nil, r.Error
+func (r *SampleRepository) ReadAll(_ context.Context, _ ...rest.QueryOptions) ([]SampleModel, error) {
+	if err := r.error(); err != nil {
+		return nil, err
 	}
 	dataSet := make([]SampleModel, 0)
-	for _, v := range r.data {
-		dataSet = append(dataSet, v)
-	}
+	r.data.Range(func(_, v any) bool {
+		dataSet = append(dataSet, v.(SampleModel))
+		return true
+	})
 	return dataSet, nil
 }
 
-func (r *SampleRepository) EntityName() string {
-	return "sample"
+// NewPersistableSampleRepository returns a new PersistableSampleRepository
+func NewPersistableSampleRepository() *PersistableSampleRepository {
+	return &PersistableSampleRepository{}
 }
 
-func (r *SampleRepository) NewInstance() interface{} {
-	return &SampleModel{}
-}
-
-func NewPersistableSampleRepository(ctx context.Context, logger ...rest.Logger) *PersistableSampleRepository {
-	repo := PersistableSampleRepository{}
-	repo.Context = ctx
-	repo.data = make(map[string]SampleModel)
-	return &repo
-}
-
+// PersistableSampleRepository implements a read-write repository on top of the read-only SampleRepository
 type PersistableSampleRepository struct {
 	SampleRepository
 }
 
-func (r *PersistableSampleRepository) Save(entity interface{}) (string, error) {
-	if r.Error != nil {
-		return "", r.Error
+func (r *PersistableSampleRepository) Save(_ context.Context, entity *SampleModel) (string, error) {
+	if err := r.error(); err != nil {
+		return "", err
 	}
-	rec := entity.(*SampleModel)
-	r.seq = r.seq + 1
-	rec.ID = strconv.FormatInt(r.seq, 10)
-	if _, ok := r.data[rec.ID]; ok {
+	entity.ID = strconv.FormatInt(r.seq.Add(1), 10)
+	if _, loaded := r.data.LoadOrStore(entity.ID, *entity); loaded {
 		return "", errors.New("record already exists")
 	}
-
-	r.data[rec.ID] = *rec
-	return rec.ID, nil
+	return entity.ID, nil
 }
 
-func (r *PersistableSampleRepository) Update(id string, entity interface{}, cols ...string) error {
-	if r.Error != nil {
-		return r.Error
+func (r *PersistableSampleRepository) Update(_ context.Context, id string, entity SampleModel, cols ...string) error {
+	if err := r.error(); err != nil {
+		return err
 	}
-	rec := entity.(*SampleModel)
-	if _, ok := r.data[rec.ID]; !ok {
+	data, ok := r.data.Load(id)
+	if !ok {
 		return rest.ErrNotFound
 	}
-
-	r.data[rec.ID] = *rec
+	current := data.(SampleModel)
+	if len(cols) == 0 {
+		current = entity
+		current.ID = id
+	} else {
+		for _, col := range cols {
+			switch col {
+			case "age":
+				current.Age = entity.Age
+			case "name":
+				current.Name = entity.Name
+			}
+		}
+	}
+	r.data.Store(id, current)
 	return nil
 }
 
-func (r *PersistableSampleRepository) Delete(id string) error {
-	if r.Error != nil {
-		return r.Error
+func (r *PersistableSampleRepository) Delete(_ context.Context, ids ...string) error {
+	if err := r.error(); err != nil {
+		return err
 	}
-	if _, ok := r.data[id]; !ok {
-		return rest.ErrNotFound
+	for _, id := range ids {
+		if _, ok := r.data.Load(id); !ok {
+			return rest.ErrNotFound
+		}
 	}
 
-	delete(r.data, id)
+	for _, id := range ids {
+		r.data.Delete(id)
+	}
 	return nil
 }

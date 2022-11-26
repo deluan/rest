@@ -3,9 +3,9 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
+	"io"
 	"math"
 	"net/http"
 	"net/url"
@@ -17,107 +17,92 @@ import (
 Controller implements a set of RESTful handlers, compatible with the JSON Server API "dialect". Please prefer to use
 the functions provided in the handler.go file instead of these.
 */
-type Controller struct {
-	Repository Repository
-	Logger     Logger
+type Controller[T any] struct {
+	Repository Repository[T]
 }
 
 // Get handles the GET verb for individual items.
-func (c *Controller) Get(w http.ResponseWriter, r *http.Request) {
+func (c *Controller[T]) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":id")
-	entity, err := c.Repository.Read(id)
+	entity, err := c.Repository.Read(r.Context(), id)
 	switch {
-	case err == ErrNotFound:
-		msg := fmt.Sprintf("%s(id:%s) not found", c.Repository.EntityName(), id)
-		c.warnf(msg)
-		RespondWithError(w, http.StatusNotFound, msg)
-		return
-	case err == ErrPermissionDenied:
-		msg := fmt.Sprintf("Reading %s(id:%s): Permission denied", c.Repository.EntityName(), id)
-		c.warnf(msg)
-		RespondWithError(w, http.StatusForbidden, msg)
-		return
-	case err != nil:
-		c.errorf("Reading %s(id:%s): %v", c.Repository.EntityName(), id, err)
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
-		return
+	case err == nil:
+		_ = RespondWithJSON(w, http.StatusOK, entity)
+	case errors.Is(err, ErrNotFound):
+		_ = RespondWithError(w, http.StatusNotFound, fmt.Sprintf("%s(id:%s) not found", c.entityName(), id))
+	case errors.Is(err, ErrPermissionDenied):
+		_ = RespondWithError(w, http.StatusForbidden, fmt.Sprintf("Reading %s(id:%s): Permission denied", c.entityName(), id))
+	default:
+		_ = RespondWithError(w, http.StatusInternalServerError, err.Error())
 	}
-	RespondWithJSON(w, http.StatusOK, &entity)
 }
 
 // GetAll handles the GET verb for the full collection
-func (c *Controller) GetAll(w http.ResponseWriter, r *http.Request) {
-	options := c.parseOptions(r.URL.Query())
-	entities, err := c.Repository.ReadAll(options)
-	if err == ErrPermissionDenied {
-		msg := fmt.Sprintf("Error reading %s: Permission denied", c.Repository.EntityName())
-		c.warnf(msg)
-		RespondWithError(w, http.StatusForbidden, msg)
+func (c *Controller[T]) GetAll(w http.ResponseWriter, r *http.Request) {
+	options, err := c.parseOptions(r.URL.Query())
+	if err != nil {
+		_ = RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err != nil {
-		c.errorf("Error reading %s: %v", c.Repository.EntityName(), err)
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+	entities, err := c.Repository.ReadAll(r.Context(), options)
+	switch {
+	case err == nil:
+		count, _ := c.Repository.Count(r.Context(), options)
+		w.Header().Set("X-Total-Count", strconv.FormatInt(count, 10))
+		if len(entities) == 0 {
+			_ = RespondWithJSON(w, http.StatusOK, []string{})
+		} else {
+			_ = RespondWithJSON(w, http.StatusOK, &entities)
+		}
+	case errors.Is(err, ErrPermissionDenied):
+		_ = RespondWithError(w, http.StatusForbidden, fmt.Sprintf("Error reading %s: Permission denied", c.entityName()))
+	default:
+		_ = RespondWithError(w, http.StatusInternalServerError, err.Error())
 	}
-	count, _ := c.Repository.Count(options)
-	w.Header().Set("X-Total-Count", strconv.FormatInt(count, 10))
-	RespondWithJSON(w, http.StatusOK, &entities)
 }
 
 // Put handles the PUT verb
-func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
-	rp, ok := c.Repository.(Persistable)
+func (c *Controller[T]) Put(w http.ResponseWriter, r *http.Request) {
+	repo, ok := c.Repository.(Persistable[T])
 	if !ok {
-		RespondWithError(w, http.StatusMethodNotAllowed, "405 Method Not Allowed")
+		_ = RespondWithError(w, http.StatusMethodNotAllowed, "405 Method Not Allowed")
 		return
 	}
-	bodyBytes, err := ioutil.ReadAll(r.Body)
+	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		c.errorf("reading body for %s %#v", c.Repository.EntityName(), err)
-		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
+		_ = RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
 		return
 	}
-	r.Body.Close()
-	entity := c.Repository.NewInstance()
-	decoder := json.NewDecoder(ioutil.NopCloser(bytes.NewBuffer(bodyBytes)))
-	if err := decoder.Decode(entity); err != nil {
-		c.errorf("parsing %s %#v", c.Repository.EntityName(), err)
-		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
+	var entity T
+	decoder := json.NewDecoder(bytes.NewBuffer(bodyBytes))
+	if err := decoder.Decode(&entity); err != nil {
+		_ = RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
 		return
 	}
 	fields, err := c.getFieldNames(bodyBytes)
 	if err != nil {
-		c.errorf("parsing %s %#v", c.Repository.EntityName(), err)
-		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
+		_ = RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
 		return
 	}
 	id := r.URL.Query().Get(":id")
-	err = rp.Update(id, entity, fields...)
+	err = repo.Update(r.Context(), id, entity, fields...)
 	switch {
-	case err == ErrNotFound:
-		msg := fmt.Sprintf("%s not found", c.Repository.EntityName())
-		c.warnf(msg)
-		RespondWithError(w, http.StatusNotFound, msg)
-		return
-	case err == ErrPermissionDenied:
-		msg := fmt.Sprintf("Updating %s: Permission denied", c.Repository.EntityName())
-		c.warnf(msg)
-		RespondWithError(w, http.StatusForbidden, msg)
-		return
-	case err != nil:
-		if e, ok := err.(*ValidationError); ok {
-			c.warnf("Updating %s: %v", c.Repository.EntityName(), e.Error())
-			RespondWithJSON(w, http.StatusBadRequest, e)
-		} else {
-			c.errorf("Updating %s: %v", c.Repository.EntityName(), err)
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
-		}
-		return
+	case err == nil:
+		c.Get(w, r)
+	case errors.Is(err, ErrNotFound):
+		_ = RespondWithError(w, http.StatusNotFound, fmt.Sprintf("%s not found", c.entityName()))
+	case errors.Is(err, ErrPermissionDenied):
+		_ = RespondWithError(w, http.StatusForbidden, fmt.Sprintf("Updating %s: Permission denied", c.entityName()))
+	case errors.Is(err, ValidationError{}):
+		var vErr *ValidationError
+		errors.As(err, &vErr)
+		_ = RespondWithJSON(w, http.StatusBadRequest, vErr)
+	default:
+		_ = RespondWithError(w, http.StatusInternalServerError, err.Error())
 	}
-	c.Get(w, r)
 }
 
-func (c *Controller) getFieldNames(bytes []byte) ([]string, error) {
+func (c *Controller[T]) getFieldNames(bytes []byte) ([]string, error) {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(bytes, &m); err != nil {
 		return nil, err
@@ -130,74 +115,65 @@ func (c *Controller) getFieldNames(bytes []byte) ([]string, error) {
 }
 
 // Post handles the POST verb
-func (c *Controller) Post(w http.ResponseWriter, r *http.Request) {
-	rp, ok := c.Repository.(Persistable)
+func (c *Controller[T]) Post(w http.ResponseWriter, r *http.Request) {
+	repo, ok := c.Repository.(Persistable[T])
 	if !ok {
-		RespondWithError(w, http.StatusMethodNotAllowed, "405 Method Not Allowed")
+		_ = RespondWithError(w, http.StatusMethodNotAllowed, "405 Method Not Allowed")
 		return
 	}
-	entity := c.Repository.NewInstance()
+	var entity T
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(entity); err != nil {
-		c.errorf("parsing %s %#v", c.Repository.EntityName(), err)
-		RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
+	if err := decoder.Decode(&entity); err != nil {
+		_ = RespondWithError(w, http.StatusUnprocessableEntity, "Invalid request payload")
 		return
 	}
-	id, err := rp.Save(entity)
+	id, err := repo.Save(r.Context(), &entity)
 	switch {
-	case err == ErrPermissionDenied:
-		msg := fmt.Sprintf("Saving %s: Permission denied", c.Repository.EntityName())
-		c.warnf(msg)
-		RespondWithError(w, http.StatusForbidden, msg)
-		return
-	case err != nil:
-		if e, ok := err.(*ValidationError); ok {
-			c.warnf("Saving %s: %v", c.Repository.EntityName(), e.Error())
-			RespondWithJSON(w, http.StatusBadRequest, e)
-		} else {
-			c.errorf("Saving %s: %v", c.Repository.EntityName(), err)
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
-		}
-		return
+	case err == nil:
+		_ = RespondWithJSON(w, http.StatusOK, &map[string]string{"id": id})
+	case errors.Is(err, ErrPermissionDenied):
+		_ = RespondWithError(w, http.StatusForbidden, fmt.Sprintf("Saving %s: Permission denied", c.entityName()))
+	case errors.Is(err, ValidationError{}):
+		var vErr *ValidationError
+		errors.As(err, &vErr)
+		_ = RespondWithJSON(w, http.StatusBadRequest, vErr)
+	default:
+		_ = RespondWithError(w, http.StatusInternalServerError, err.Error())
 	}
-	RespondWithJSON(w, http.StatusOK, &map[string]string{"id": id})
 }
 
 // Delete handles the DELETE verb
-func (c *Controller) Delete(w http.ResponseWriter, r *http.Request) {
-	rp, ok := c.Repository.(Persistable)
+func (c *Controller[T]) Delete(w http.ResponseWriter, r *http.Request) {
+	repo, ok := c.Repository.(Persistable[T])
 	if !ok {
-		RespondWithError(w, http.StatusMethodNotAllowed, "405 Method Not Allowed")
+		_ = RespondWithError(w, http.StatusMethodNotAllowed, "405 Method Not Allowed")
 		return
 	}
-	id := r.URL.Query().Get(":id")
-	err := rp.Delete(id)
+	ids := r.URL.Query()[":id"]
+	err := repo.Delete(r.Context(), ids...)
 	switch {
-	case err == ErrNotFound:
-		msg := fmt.Sprintf("%s(id:%s) not found", c.Repository.EntityName(), id)
-		c.warnf(msg)
-		RespondWithError(w, http.StatusNotFound, msg)
-		return
-	case err == ErrPermissionDenied:
-		msg := fmt.Sprintf("Deleting %s(id:%s): Permission denied", c.Repository.EntityName(), id)
-		c.warnf(msg)
-		RespondWithError(w, http.StatusForbidden, msg)
-		return
-	case err != nil:
-		c.errorf("Deleting %s(id:%s): %v", c.Repository.EntityName(), id, err)
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
-		return
+	case err == nil:
+		_ = RespondWithJSON(w, http.StatusOK, &map[string]string{})
+	case errors.Is(err, ErrNotFound):
+		_ = RespondWithError(w, http.StatusNotFound, fmt.Sprintf("%s(id:%s) not found", c.entityName(), ids))
+	case errors.Is(err, ErrPermissionDenied):
+		_ = RespondWithError(w, http.StatusForbidden, fmt.Sprintf("Deleting %s(id:%s): Permission denied", c.entityName(), ids))
+	default:
+		_ = RespondWithError(w, http.StatusInternalServerError, err.Error())
 	}
-	RespondWithJSON(w, http.StatusOK, &map[string]string{})
 }
 
-func (c *Controller) parseFilters(params url.Values) map[string]interface{} {
+func (c *Controller[T]) entityName() string {
+	return strings.TrimPrefix(fmt.Sprintf("%T", (*T)(nil)), "*")
+}
+
+func (c *Controller[T]) parseFilters(params url.Values) (map[string]any, error) {
 	var filterStr = params.Get("_filters")
-	filters := make(map[string]interface{})
+	filters := make(map[string]any)
 	if filterStr != "" {
 		filterStr, _ = url.QueryUnescape(filterStr)
 		if err := json.Unmarshal([]byte(filterStr), &filters); err != nil {
-			c.warnf("Invalid filter specification: %s - %v", filterStr, err)
+			return nil, err
 		}
 	}
 	for k, v := range params {
@@ -210,37 +186,24 @@ func (c *Controller) parseFilters(params url.Values) map[string]interface{} {
 			filters[k] = v
 		}
 	}
-	return filters
+	return filters, nil
 }
 
-func (c *Controller) parseOptions(params url.Values) QueryOptions {
+func (c *Controller[T]) parseOptions(params url.Values) (QueryOptions, error) {
 	start, _ := strconv.Atoi(params.Get("_start"))
 	end, _ := strconv.Atoi(params.Get("_end"))
 
 	sortField := params.Get("_sort")
 	sortDir := params.Get("_order")
-
+	filters, err := c.parseFilters(params)
+	if err != nil {
+		return QueryOptions{}, err
+	}
 	return QueryOptions{
 		Sort:    sortField,
 		Order:   strings.ToLower(sortDir),
 		Offset:  start,
 		Max:     int(math.Max(0, float64(end-start))),
-		Filters: c.parseFilters(params),
-	}
-}
-
-func (c *Controller) warnf(format string, args ...interface{}) {
-	if c.Logger != nil {
-		c.Logger.Warnf(format, args...)
-	} else {
-		log.Printf(format, args...)
-	}
-}
-
-func (c *Controller) errorf(format string, args ...interface{}) {
-	if c.Logger != nil {
-		c.Logger.Errorf(format, args...)
-	} else {
-		log.Printf(format, args...)
-	}
+		Filters: filters,
+	}, nil
 }

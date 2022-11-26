@@ -11,7 +11,7 @@ func RespondWithError(w http.ResponseWriter, code int, message string) error {
 }
 
 // RespondWithJSON returns a message formatted as JSON, and sets the http status to code
-func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) error {
+func RespondWithJSON(w http.ResponseWriter, code int, payload any) error {
 	response, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -19,6 +19,6 @@ func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) error
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	w.Write(response)
-	return nil
+	_, err = w.Write(response)
+	return err
 }

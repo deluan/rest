@@ -11,10 +11,10 @@ import (
 var logger = logrus.New()
 
 func Test_parseOptions(t *testing.T) {
-	c := &Controller{Logger: logger}
+	c := &Controller[any]{}
 
 	Convey("Given no params", t, func() {
-		options := c.parseOptions(url.Values{})
+		options, _ := c.parseOptions(url.Values{})
 		Convey("It returns an empty QueryOptions struct", func() {
 			So(options.Sort, ShouldBeEmpty)
 			So(options.Order, ShouldBeEmpty)
@@ -26,7 +26,7 @@ func Test_parseOptions(t *testing.T) {
 
 	Convey("Given pagination params", t, func() {
 		params := url.Values{"_start": []string{"10"}, "_end": []string{"30"}, "_sort": []string{"name"}, "_order": []string{"DESC"}}
-		options := c.parseOptions(params)
+		options, _ := c.parseOptions(params)
 
 		Convey("it  returns a proper filled QueryOptions struct", func() {
 			So(options.Sort, ShouldEqual, "name")
@@ -38,7 +38,7 @@ func Test_parseOptions(t *testing.T) {
 
 	Convey("Given individual filter params", t, func() {
 		params := url.Values{"name": []string{"joe"}, "age": []string{"30"}}
-		options := c.parseOptions(params)
+		options, _ := c.parseOptions(params)
 
 		Convey("it  returns a proper filled QueryOptions struct", func() {
 			So(options.Filters, ShouldHaveLength, 2)
@@ -49,7 +49,7 @@ func Test_parseOptions(t *testing.T) {
 
 	Convey("Given duplicated individual filter params", t, func() {
 		params := url.Values{"name": []string{"joe", "cecilia"}}
-		options := c.parseOptions(params)
+		options, _ := c.parseOptions(params)
 
 		Convey("it  returns a proper filled QueryOptions struct", func() {
 			So(options.Filters, ShouldHaveLength, 1)
@@ -59,7 +59,7 @@ func Test_parseOptions(t *testing.T) {
 
 	Convey("Given single filter param", t, func() {
 		params := url.Values{"_filters": []string{`{"name":"cecilia","age":"22"}`}}
-		options := c.parseOptions(params)
+		options, _ := c.parseOptions(params)
 
 		Convey("it returns a proper filled QueryOptions struct", func() {
 			So(options.Filters, ShouldHaveLength, 2)
@@ -70,7 +70,7 @@ func Test_parseOptions(t *testing.T) {
 
 	Convey("Given an invalid single filter param", t, func() {
 		params := url.Values{"_filters": []string{`{"name":"cecilia","age":MISSING_QUOTES}`}}
-		options := c.parseOptions(params)
+		options, _ := c.parseOptions(params)
 
 		Convey("it ignores the filter", func() {
 			So(options.Filters, ShouldHaveLength, 0)

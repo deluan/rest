@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"context"
 	"net/http"
 )
 
@@ -9,9 +8,9 @@ import (
 Get handles the GET verb for individual items. Should be mapped to:
 GET /thing/:id
 */
-func Get(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
+func Get[T any](repository Repository[T]) http.HandlerFunc {
+	c := createController(repository)
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := createController(newRepository, r.Context(), logger...)
 		c.Get(w, r)
 	}
 }
@@ -21,9 +20,9 @@ GetAll handles the GET verb for the full collection. Should be mapped to:
 GET /thing
 For all query options available, see https://github.com/typicode/json-server
 */
-func GetAll(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
+func GetAll[T any](repository Repository[T]) http.HandlerFunc {
+	c := createController(repository)
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := createController(newRepository, r.Context(), logger...)
 		c.GetAll(w, r)
 	}
 }
@@ -32,9 +31,9 @@ func GetAll(newRepository RepositoryConstructor, logger ...Logger) http.HandlerF
 Post handles the POST verb. Should be mapped to:
 POST /thing
 */
-func Post(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
+func Post[T any](repository Repository[T]) http.HandlerFunc {
+	c := createController(repository)
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := createController(newRepository, r.Context(), logger...)
 		c.Post(w, r)
 	}
 }
@@ -43,9 +42,9 @@ func Post(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFun
 Put handles the PUT verb. Should be mapped to:
 PUT /thing/:id
 */
-func Put(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
+func Put[T any](repository Repository[T]) http.HandlerFunc {
+	c := createController(repository)
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := createController(newRepository, r.Context(), logger...)
 		c.Put(w, r)
 	}
 }
@@ -54,17 +53,14 @@ func Put(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc
 Delete handles the DELETE verb. Should be mapped to:
 DELETE /thing/:id
 */
-func Delete(newRepository RepositoryConstructor, logger ...Logger) http.HandlerFunc {
+func Delete[T any](repository Repository[T]) http.HandlerFunc {
+	c := createController(repository)
 	return func(w http.ResponseWriter, r *http.Request) {
-		c := createController(newRepository, r.Context(), logger...)
 		c.Delete(w, r)
 	}
 }
 
-func createController(newRepository RepositoryConstructor, ctx context.Context, logger ...Logger) Controller {
-	c := Controller{Repository: newRepository(ctx)}
-	if len(logger) > 0 {
-		c.Logger = logger[0]
-	}
+func createController[T any](r Repository[T]) *Controller[T] {
+	c := &Controller[T]{Repository: r}
 	return c
 }
