@@ -2,82 +2,74 @@ package rest
 
 import (
 	"net/url"
-	"testing"
 
-	"github.com/sirupsen/logrus"
-	. "github.com/smartystreets/goconvey/convey"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-var logger = logrus.New()
+var _ = Describe("parseOptions", func() {
+	var c *Controller[any]
 
-func Test_parseOptions(t *testing.T) {
-	c := &Controller[any]{}
+	BeforeEach(func() {
+		c = &Controller[any]{}
+	})
 
-	Convey("Given no params", t, func() {
-		options, _ := c.parseOptions(url.Values{})
-		Convey("It returns an empty QueryOptions struct", func() {
-			So(options.Sort, ShouldBeEmpty)
-			So(options.Order, ShouldBeEmpty)
-			So(options.Offset, ShouldEqual, 0)
-			So(options.Max, ShouldEqual, 0)
-			So(options.Filters, ShouldBeEmpty)
+	Describe("Given no params", func() {
+		It("returns an empty QueryOptions struct", func() {
+			options, _ := c.parseOptions(url.Values{})
+			Expect(options.Sort).To(BeEmpty())
+			Expect(options.Order).To(BeEmpty())
+			Expect(options.Offset).To(Equal(0))
+			Expect(options.Max).To(Equal(0))
+			Expect(options.Filters).To(BeEmpty())
 		})
 	})
 
-	Convey("Given pagination params", t, func() {
-		params := url.Values{"_start": []string{"10"}, "_end": []string{"30"}, "_sort": []string{"name"}, "_order": []string{"DESC"}}
-		options, _ := c.parseOptions(params)
-
-		Convey("it  returns a proper filled QueryOptions struct", func() {
-			So(options.Sort, ShouldEqual, "name")
-			So(options.Order, ShouldEqual, "desc")
-			So(options.Offset, ShouldEqual, 10)
-			So(options.Max, ShouldEqual, 20)
+	Describe("Given pagination params", func() {
+		It("returns a properly filled QueryOptions struct", func() {
+			params := url.Values{"_start": []string{"10"}, "_end": []string{"30"}, "_sort": []string{"name"}, "_order": []string{"DESC"}}
+			options, _ := c.parseOptions(params)
+			Expect(options.Sort).To(Equal("name"))
+			Expect(options.Order).To(Equal("desc"))
+			Expect(options.Offset).To(Equal(10))
+			Expect(options.Max).To(Equal(20))
 		})
 	})
 
-	Convey("Given individual filter params", t, func() {
-		params := url.Values{"name": []string{"joe"}, "age": []string{"30"}}
-		options, _ := c.parseOptions(params)
-
-		Convey("it  returns a proper filled QueryOptions struct", func() {
-			So(options.Filters, ShouldHaveLength, 2)
-			So(options.Filters["name"], ShouldEqual, "joe")
-			So(options.Filters["age"], ShouldEqual, "30")
+	Describe("Given individual filter params", func() {
+		It("returns a properly filled QueryOptions struct", func() {
+			params := url.Values{"name": []string{"joe"}, "age": []string{"30"}}
+			options, _ := c.parseOptions(params)
+			Expect(options.Filters).To(HaveLen(2))
+			Expect(options.Filters["name"]).To(Equal("joe"))
+			Expect(options.Filters["age"]).To(Equal("30"))
 		})
 	})
 
-	Convey("Given duplicated individual filter params", t, func() {
-		params := url.Values{"name": []string{"joe", "cecilia"}}
-		options, _ := c.parseOptions(params)
-
-		Convey("it  returns a proper filled QueryOptions struct", func() {
-			So(options.Filters, ShouldHaveLength, 1)
-			So(options.Filters["name"], ShouldResemble, []string{"joe", "cecilia"})
+	Describe("Given duplicated individual filter params", func() {
+		It("returns a properly filled QueryOptions struct", func() {
+			params := url.Values{"name": []string{"joe", "cecilia"}}
+			options, _ := c.parseOptions(params)
+			Expect(options.Filters).To(HaveLen(1))
+			Expect(options.Filters["name"]).To(ConsistOf("joe", "cecilia"))
 		})
 	})
 
-	Convey("Given single filter param", t, func() {
-		params := url.Values{"_filters": []string{`{"name":"cecilia","age":"22"}`}}
-		options, _ := c.parseOptions(params)
-
-		Convey("it returns a proper filled QueryOptions struct", func() {
-			So(options.Filters, ShouldHaveLength, 2)
-			So(options.Filters["name"], ShouldEqual, "cecilia")
-			So(options.Filters["age"], ShouldEqual, "22")
+	Describe("Given single filter param", func() {
+		It("returns a properly filled QueryOptions struct", func() {
+			params := url.Values{"_filters": []string{`{"name":"cecilia","age":"22"}`}}
+			options, _ := c.parseOptions(params)
+			Expect(options.Filters).To(HaveLen(2))
+			Expect(options.Filters["name"]).To(Equal("cecilia"))
+			Expect(options.Filters["age"]).To(Equal("22"))
 		})
 	})
 
-	Convey("Given an invalid single filter param", t, func() {
-		params := url.Values{"_filters": []string{`{"name":"cecilia","age":MISSING_QUOTES}`}}
-		options, _ := c.parseOptions(params)
-
-		Convey("it ignores the filter", func() {
-			So(options.Filters, ShouldHaveLength, 0)
+	Describe("Given an invalid single filter param", func() {
+		It("ignores the filter", func() {
+			params := url.Values{"_filters": []string{`{"name":"cecilia","age":MISSING_QUOTES}`}}
+			options, _ := c.parseOptions(params)
+			Expect(options.Filters).To(HaveLen(0))
 		})
 	})
-}
-
-func init() {
-	logger.SetLevel(logrus.FatalLevel)
-}
+})
