@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/deluan/rest"
 	"github.com/deluan/rest/examples"
@@ -275,250 +276,296 @@ var _ = Describe("Handlers", func() {
 			})
 		})
 	})
-})
 
-//func TestController_Put(t *testing.T) {
-//	Convey("Given a read-only repository", t, func() {
-//		handler, _ := createReadOnlyHandler(rest.Delete)
-//		Convey("When I call Put id=1", func() {
-//			req, res := createRequestResponse("PUT", "/sample?:id=1", nil)
-//			handler(res, req)
-//
-//			Convey("It returns 405 http status", func() {
-//				So(res.Code, ShouldEqual, 405)
-//			})
-//		})
-//	})
-//
-//	Convey("Given an empty repository", t, func() {
-//		handler, repo := createPersistableHandler(rest.Put)
-//
-//		Convey("When I call Put with an invalid request", func() {
-//			req, res := createRequestResponse("PUT", "/sample?:id=1", nil)
-//			handler(res, req)
-//
-//			Convey("It returns 422 http status", func() {
-//				So(res.Code, ShouldEqual, 422)
-//			})
-//
-//			Convey("It returns an error message in the response", func() {
-//				var response map[string]string
-//				if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
-//					panic(err)
-//				}
-//				So(response, ShouldContainKey, "error")
-//			})
-//
-//			Convey("It passes down the context", func() {
-//				So(repo.Context.Value("test_key"), ShouldEqual, "test_value")
-//			})
-//		})
-//
-//		Convey("When I call Put id=1", func() {
-//			req, res := createRequestResponse("PUT", "/sample?:id=1", aRecordBody("1", "John Doe", 33))
-//			handler(res, req)
-//
-//			Convey("It returns 404 http status", func() {
-//				So(res.Code, ShouldEqual, 404)
-//			})
-//
-//			Convey("It returns an error message in the response", func() {
-//				var response map[string]any
-//				if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
-//					panic(err)
-//				}
-//				So(response, ShouldContainKey, "error")
-//			})
-//		})
-//
-//		Convey("When an item is added", func() {
-//			joe := aRecord("Joe", 30)
-//			id, _ := repo.Save(&joe)
-//
-//			Convey("And I call Put", func() {
-//				req, res := createRequestResponse("PUT", "/sample?:id="+id, aRecordBody(id, "John", 31))
-//				handler(res, req)
-//
-//				Convey("It returns 200 http status", func() {
-//					So(res.Code, ShouldEqual, 200)
-//				})
-//
-//				Convey("It returns all data from the record", func() {
-//					var response examples.SampleModel
-//					if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
-//						panic(err)
-//					}
-//					So(response.ID, ShouldEqual, id)
-//					So(response.Name, ShouldEqual, "John")
-//					So(response.Age, ShouldEqual, 31)
-//				})
-//			})
-//		})
-//
-//		Convey("When the repository returns a ErrPermissionDenied", func() {
-//			repo.SetError(rest.ErrPermissionDenied)
-//
-//			req, res := createRequestResponse("PUT", "/sample", aRecordBody("1", "John Doe", 33))
-//			handler(res, req)
-//
-//			Convey("It returns 403 http status", func() {
-//				So(res.Code, ShouldEqual, 403)
-//			})
-//		})
-//
-//		Convey("When the repository returns a ValidationError", func() {
-//			repo.Error = &rest.ValidationError{Errors: map[string]string{
-//				"field1": "not_valid",
-//			}}
-//
-//			req, res := createRequestResponse("PUT", "/sample", aRecordBody("1", "John Doe", 33))
-//			handler(res, req)
-//
-//			Convey("It returns 400 http status", func() {
-//				So(res.Code, ShouldEqual, 400)
-//			})
-//
-//			Convey("It returns a list of errors in the body", func() {
-//				var parsed map[string]map[string]string
-//				_ = json.Unmarshal(res.Body.Bytes(), &parsed)
-//				So(parsed, ShouldContainKey, "errors")
-//				So(parsed["errors"], ShouldContainKey, "field1")
-//				So(parsed["errors"]["field1"], ShouldEqual, "not_valid")
-//			})
-//		})
-//
-//		Convey("When the repository returns an error", func() {
-//			repo.Error = errors.New("unknown error")
-//
-//			req, res := createRequestResponse("PUT", "/sample", aRecordBody("1", "John Doe", 33))
-//			handler(res, req)
-//
-//			Convey("It returns 500 http status", func() {
-//				So(res.Code, ShouldEqual, 500)
-//			})
-//
-//			Convey("It returns an error message in the response", func() {
-//				var response map[string]string
-//				if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
-//					panic(err)
-//				}
-//				So(response, ShouldContainKey, "error")
-//			})
-//		})
-//	})
-//}
-//
-//func TestController_Post(t *testing.T) {
-//	Convey("Given a read-only repository", t, func() {
-//		handler, _ := createReadOnlyHandler(rest.Delete)
-//		Convey("When I send valid data", func() {
-//			req, res := createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
-//			handler(res, req)
-//
-//			Convey("It returns 405 http status", func() {
-//				So(res.Code, ShouldEqual, 405)
-//			})
-//		})
-//	})
-//
-//	Convey("Given an empty repository", t, func() {
-//		handler, repo := createPersistableHandler(rest.Post)
-//
-//		Convey("When I send valid data", func() {
-//			req, res := createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
-//			handler(res, req)
-//
-//			Convey("It returns 200 http status", func() {
-//				So(res.Code, ShouldEqual, 200)
-//			})
-//
-//			Convey("It adds the data to the repo", func() {
-//				count, _ := repo.Count()
-//				So(count, ShouldEqual, 1)
-//			})
-//
-//			Convey("It returns the new id in the response", func() {
-//				var response map[string]string
-//				if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
-//					panic(err)
-//				}
-//				So(response, ShouldContainKey, "id")
-//				id := response["id"]
-//				r, _ := repo.Read(id)
-//				So(r.(examples.SampleModel).Name, ShouldEqual, "John Doe")
-//			})
-//
-//			Convey("It passes down the context", func() {
-//				So(repo.Context.Value("test_key"), ShouldEqual, "test_value")
-//			})
-//		})
-//
-//		Convey("When I send invalid data", func() {
-//			req, res := createRequestResponse("POST", "/sample", strings.NewReader("BAD DATA"))
-//			handler(res, req)
-//
-//			Convey("It returns 422 http status", func() {
-//				So(res.Code, ShouldEqual, 422)
-//			})
-//
-//			Convey("It does not adds any data to the repo", func() {
-//				count, _ := repo.Count()
-//				So(count, ShouldEqual, 0)
-//			})
-//		})
-//
-//		Convey("When the repository returns a ErrPermissionDenied", func() {
-//			repo.SetError(rest.ErrPermissionDenied)
-//
-//			req, res := createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
-//			handler(res, req)
-//
-//			Convey("It returns 403 http status", func() {
-//				So(res.Code, ShouldEqual, 403)
-//			})
-//		})
-//
-//		Convey("When the repository returns a ValidationError", func() {
-//			repo.SetError(&rest.ValidationError{Errors: map[string]string{
-//				"field1": "not_valid",
-//			}})
-//
-//			req, res := createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
-//			handler(res, req)
-//
-//			Convey("It returns 400 http status", func() {
-//				So(res.Code, ShouldEqual, 400)
-//			})
-//
-//			Convey("It returns a list of errors in the body", func() {
-//				var parsed map[string]map[string]string
-//				_ = json.Unmarshal(res.Body.Bytes(), &parsed)
-//				So(parsed, ShouldContainKey, "errors")
-//				So(parsed["errors"], ShouldContainKey, "field1")
-//				So(parsed["errors"]["field1"], ShouldEqual, "not_valid")
-//			})
-//		})
-//
-//		Convey("When the repository returns an error", func() {
-//			repo.SetError(errors.New("unknown error"))
-//
-//			req, res := createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
-//			handler(res, req)
-//
-//			Convey("It returns 500 http status", func() {
-//				So(res.Code, ShouldEqual, 500)
-//			})
-//
-//			Convey("It returns an error message in the response", func() {
-//				var response map[string]string
-//				if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
-//					panic(err)
-//				}
-//				So(response, ShouldContainKey, "error")
-//			})
-//		})
-//	})
-//}
+	Describe("Put", func() {
+		BeforeEach(func() {
+			handler = rest.Put(rest.Repository[examples.SampleModel](repo))
+		})
+
+		Context("Given a read-only repository", func() {
+			BeforeEach(func() {
+				readOnlyRepo := examples.NewSampleRepository()
+				handler = rest.Put(rest.Repository[examples.SampleModel](readOnlyRepo))
+			})
+
+			When("I call Put id=1", func() {
+				var req *http.Request
+				var res *httptest.ResponseRecorder
+
+				BeforeEach(func() {
+					req, res = createRequestResponse("PUT", "/sample?:id=1", nil)
+					handler(res, req)
+				})
+
+				It("returns 405 http status", func() {
+					Expect(res.Code).To(Equal(405))
+				})
+			})
+		})
+
+		Context("Given an empty repository", func() {
+
+			When("I call Put with an invalid request", func() {
+				var req *http.Request
+				var res *httptest.ResponseRecorder
+
+				BeforeEach(func() {
+					req, res = createRequestResponse("PUT", "/sample?:id=1", nil)
+					handler(res, req)
+				})
+
+				It("returns 422 http status", func() {
+					Expect(res.Code).To(Equal(422))
+				})
+
+				It("returns an error message in the response", func() {
+					var response map[string]string
+					err := json.Unmarshal(res.Body.Bytes(), &response)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(response).To(HaveKey("error"))
+				})
+			})
+
+			Context("When an item is added", func() {
+				var idJoe string
+
+				BeforeEach(func() {
+					joe := aRecord("Joe", 30)
+					idJoe, _ = repo.Save(ctx, &joe)
+				})
+
+				When("And I call Put", func() {
+					var req *http.Request
+					var res *httptest.ResponseRecorder
+
+					BeforeEach(func() {
+						req, res = createRequestResponse("PUT", fmt.Sprintf("/sample?:id=%s", idJoe), aRecordBody(idJoe, "Not Joe", 31))
+						handler(res, req)
+					})
+
+					It("returns 200 http status", func() {
+						Expect(res.Code).To(Equal(200))
+					})
+
+					It("returns all data from the record", func() {
+						var response examples.SampleModel
+						err := json.Unmarshal(res.Body.Bytes(), &response)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(response.ID).To(Equal(idJoe))
+						Expect(response.Name).To(Equal("Not Joe"))
+						Expect(response.Age).To(Equal(31))
+					})
+				})
+			})
+
+			Context("When the repository returns a ErrPermissionDenied", func() {
+				BeforeEach(func() {
+					repo.SetError(rest.ErrPermissionDenied)
+				})
+
+				When("I call Put", func() {
+					var req *http.Request
+					var res *httptest.ResponseRecorder
+
+					BeforeEach(func() {
+						req, res = createRequestResponse("PUT", "/sample", aRecordBody("1", "John Doe", 33))
+						handler(res, req)
+					})
+
+					It("returns 403 http status", func() {
+						Expect(res.Code).To(Equal(403))
+					})
+				})
+			})
+
+			Context("When the repository returns a ValidationError", func() {
+				BeforeEach(func() {
+					repo.SetError(&rest.ValidationError{Errors: map[string]string{
+						"field1": "not_valid",
+					}})
+				})
+
+				When("I call Put", func() {
+					var req *http.Request
+					var res *httptest.ResponseRecorder
+
+					BeforeEach(func() {
+						req, res = createRequestResponse("PUT", "/sample", aRecordBody("1", "John Doe", 33))
+						handler(res, req)
+					})
+
+					It("returns 400 http status", func() {
+						Expect(res.Code).To(Equal(400))
+					})
+
+					It("returns a list of errors in the body", func() {
+						var parsed map[string]map[string]string
+						err := json.Unmarshal(res.Body.Bytes(), &parsed)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(parsed).To(HaveKey("errors"))
+						Expect(parsed["errors"]).To(HaveKeyWithValue("field1", "not_valid"))
+					})
+				})
+			})
+
+			Context("When the repository returns an error", func() {
+				BeforeEach(func() {
+					repo.SetError(errors.New("unknown error"))
+				})
+
+				When("I call Put", func() {
+					var req *http.Request
+					var res *httptest.ResponseRecorder
+
+					BeforeEach(func() {
+						req, res = createRequestResponse("PUT", "/sample", aRecordBody("1", "John Doe", 33))
+						handler(res, req)
+					})
+
+					It("returns 500 http status", func() {
+						Expect(res.Code).To(Equal(500))
+					})
+
+					It("returns an error message in the response", func() {
+						var response map[string]string
+						err := json.Unmarshal(res.Body.Bytes(), &response)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(response).To(HaveKey("error"))
+					})
+				})
+			})
+		})
+	})
+
+	Describe("Post", func() {
+		BeforeEach(func() {
+			handler = rest.Post(rest.Repository[examples.SampleModel](repo))
+		})
+
+		Context("Given a read-only repository", func() {
+			BeforeEach(func() {
+				readOnlyRepo := examples.NewSampleRepository()
+				handler = rest.Post(rest.Repository[examples.SampleModel](readOnlyRepo))
+			})
+
+			When("I send valid data", func() {
+				var req *http.Request
+				var res *httptest.ResponseRecorder
+
+				BeforeEach(func() {
+					req, res = createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
+					handler(res, req)
+				})
+
+				It("returns 405 http status", func() {
+					Expect(res.Code).To(Equal(405))
+				})
+			})
+		})
+
+		Context("Given an empty repository", func() {
+			When("I send valid data", func() {
+				var req *http.Request
+				var res *httptest.ResponseRecorder
+
+				BeforeEach(func() {
+					req, res = createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
+					handler(res, req)
+				})
+
+				It("returns 200 http status", func() {
+					Expect(res.Code).To(Equal(200))
+				})
+
+				It("adds the data to the repo", func() {
+					Expect(repo.Count(ctx)).To(Equal(int64(1)))
+				})
+			})
+
+			When("I send invalid data", func() {
+				var req *http.Request
+				var res *httptest.ResponseRecorder
+
+				BeforeEach(func() {
+					req, res = createRequestResponse("POST", "/sample", strings.NewReader("BAD DATA"))
+					handler(res, req)
+				})
+
+				It("returns 422 http status", func() {
+					Expect(res.Code).To(Equal(422))
+				})
+
+				It("does not add any data to the repo", func() {
+					Expect(repo.Count(ctx)).To(BeZero())
+				})
+			})
+		})
+
+		Context("Given an empty repository", func() {
+			When("the repository returns a ErrPermissionDenied", func() {
+				var req *http.Request
+				var res *httptest.ResponseRecorder
+
+				BeforeEach(func() {
+					repo.SetError(rest.ErrPermissionDenied)
+					req, res = createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
+					handler(res, req)
+				})
+
+				It("returns 403 http status", func() {
+					Expect(res.Code).To(Equal(403))
+				})
+			})
+
+			When("the repository returns a ValidationError", func() {
+				var req *http.Request
+				var res *httptest.ResponseRecorder
+
+				BeforeEach(func() {
+					repo.SetError(&rest.ValidationError{Errors: map[string]string{
+						"field1": "not_valid",
+					}})
+					req, res = createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
+					handler(res, req)
+				})
+
+				It("returns 400 http status", func() {
+					Expect(res.Code).To(Equal(400))
+				})
+
+				It("returns a list of errors in the body", func() {
+					var parsed map[string]map[string]string
+					_ = json.Unmarshal(res.Body.Bytes(), &parsed)
+					Expect(parsed).To(HaveKey("errors"))
+					Expect(parsed["errors"]).To(HaveKey("field1"))
+					Expect(parsed["errors"]["field1"]).To(Equal("not_valid"))
+				})
+			})
+
+			When("the repository returns an unknown error", func() {
+				var req *http.Request
+				var res *httptest.ResponseRecorder
+
+				BeforeEach(func() {
+					repo.SetError(errors.New("unknown error"))
+					req, res = createRequestResponse("POST", "/sample", aRecordBody("0", "John Doe", 33))
+					handler(res, req)
+				})
+
+				It("returns 500 http status", func() {
+					Expect(res.Code).To(Equal(500))
+				})
+
+				It("returns an error message in the response", func() {
+					var response map[string]string
+					err := json.Unmarshal(res.Body.Bytes(), &response)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(response).To(HaveKey("error"))
+				})
+			})
+		})
+	})
+})
 
 func aRecord(name string, age int) examples.SampleModel {
 	return examples.SampleModel{Name: name, Age: age}

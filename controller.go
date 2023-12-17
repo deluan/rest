@@ -86,6 +86,7 @@ func (c *Controller[T]) Put(w http.ResponseWriter, r *http.Request) {
 	}
 	id := r.URL.Query().Get(":id")
 	err = repo.Update(r.Context(), id, entity, fields...)
+	var vErr *ValidationError
 	switch {
 	case err == nil:
 		c.Get(w, r)
@@ -93,9 +94,7 @@ func (c *Controller[T]) Put(w http.ResponseWriter, r *http.Request) {
 		_ = RespondWithError(w, http.StatusNotFound, fmt.Sprintf("%s not found", c.entityName()))
 	case errors.Is(err, ErrPermissionDenied):
 		_ = RespondWithError(w, http.StatusForbidden, fmt.Sprintf("Updating %s: Permission denied", c.entityName()))
-	case errors.Is(err, ValidationError{}):
-		var vErr *ValidationError
-		errors.As(err, &vErr)
+	case errors.As(err, &vErr):
 		_ = RespondWithJSON(w, http.StatusBadRequest, vErr)
 	default:
 		_ = RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -128,14 +127,13 @@ func (c *Controller[T]) Post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, err := repo.Save(r.Context(), &entity)
+	var vErr *ValidationError
 	switch {
 	case err == nil:
 		_ = RespondWithJSON(w, http.StatusOK, &map[string]string{"id": id})
 	case errors.Is(err, ErrPermissionDenied):
 		_ = RespondWithError(w, http.StatusForbidden, fmt.Sprintf("Saving %s: Permission denied", c.entityName()))
-	case errors.Is(err, ValidationError{}):
-		var vErr *ValidationError
-		errors.As(err, &vErr)
+	case errors.As(err, &vErr):
 		_ = RespondWithJSON(w, http.StatusBadRequest, vErr)
 	default:
 		_ = RespondWithError(w, http.StatusInternalServerError, err.Error())

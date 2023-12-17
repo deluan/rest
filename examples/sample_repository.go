@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -113,7 +114,7 @@ func (r *PersistableSampleRepository) Update(_ context.Context, id string, entit
 		current.ID = id
 	} else {
 		for _, col := range cols {
-			switch col {
+			switch strings.ToLower(col) {
 			case "age":
 				current.Age = entity.Age
 			case "name":

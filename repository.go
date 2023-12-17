@@ -48,8 +48,6 @@ PUT and DELETE http methods. If this interface is not implemented by the reposit
 will return 405 - Method Not Allowed.
 */
 type Persistable[T any] interface {
-	Repository[T]
-
 	// Save adds the entity to the repository and returns the newly created id
 	Save(ctx context.Context, entity *T) (string, error)
 
