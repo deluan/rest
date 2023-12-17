@@ -2,56 +2,73 @@ package rest
 
 import (
 	"encoding/json"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"net/http/httptest"
-	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 type payload struct{ Field1 int }
 
-func TestRespondWithJSON(t *testing.T) {
-	Convey("Given a success payload", t, func() {
-		response := payload{123}
-		recorder := httptest.NewRecorder()
-		_ = RespondWithJSON(recorder, 200, response)
+var _ = Describe("Response renderers", func() {
+	var recorder *httptest.ResponseRecorder
+	BeforeEach(func() {
+		recorder = httptest.NewRecorder()
+	})
 
-		Convey("It sets the right content-type", func() {
-			So(recorder.Header()["Content-Type"], ShouldContain, "application/json")
-		})
-		Convey("It sends the correct status", func() {
-			So(recorder.Code, ShouldEqual, 200)
-		})
-		Convey("It sends the payload", func() {
-			actual := &payload{}
-			if err := json.Unmarshal(recorder.Body.Bytes(), actual); err != nil {
-				panic(err)
-			}
-			So(*actual, ShouldResemble, response)
-		})
-	})
-	Convey("Given an invalid payload", t, func() {
-		response := func() {}
-		recorder := httptest.NewRecorder()
-		err := RespondWithJSON(recorder, 200, response)
-		Convey("It returns an error", func() {
-			So(err, ShouldNotBeNil)
-		})
-	})
-}
+	Describe("RespondWithJSON", func() {
+		var response any
 
-func TestRespondWithError(t *testing.T) {
-	Convey("Given an error payload", t, func() {
-		recorder := httptest.NewRecorder()
-		_ = RespondWithError(recorder, 400, "error message")
-		Convey("It sets the right content-type", func() {
-			So(recorder.Header()["Content-Type"], ShouldContain, "application/json")
+		Context("Given a success payload", func() {
+			BeforeEach(func() {
+				response = payload{123}
+				_ = RespondWithJSON(recorder, 200, response)
+			})
+
+			It("sets the right content-type", func() {
+				Expect(recorder.Header()["Content-Type"]).To(ContainElement("application/json"))
+			})
+
+			It("sends the correct status", func() {
+				Expect(recorder.Code).To(Equal(200))
+			})
+
+			It("sends the payload", func() {
+				actual := &payload{}
+				err := json.Unmarshal(recorder.Body.Bytes(), actual)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(*actual).To(Equal(response))
+			})
 		})
-		Convey("It sends the correct status", func() {
-			So(recorder.Code, ShouldEqual, 400)
-		})
-		Convey("It sends the payload", func() {
-			So(recorder.Body.String(), ShouldEqual, `{"error":"error message"}`)
+
+		Context("Given an invalid payload", func() {
+			BeforeEach(func() {
+				response = func() {}
+			})
+
+			It("returns an error", func() {
+				err := RespondWithJSON(recorder, 200, response)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 	})
-}
+
+	Describe("RespondWithError", func() {
+		Context("Given an error payload", func() {
+			BeforeEach(func() {
+				_ = RespondWithError(recorder, 400, "error message")
+			})
+
+			It("sets the right content-type", func() {
+				Expect(recorder.Header()["Content-Type"]).To(ContainElement("application/json"))
+			})
+
+			It("sends the correct status", func() {
+				Expect(recorder.Code).To(Equal(400))
+			})
+
+			It("sends the payload", func() {
+				Expect(recorder.Body.String()).To(Equal(`{"error":"error message"}`))
+			})
+		})
+	})
+})
