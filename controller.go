@@ -3,6 +3,7 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -27,12 +28,12 @@ func (c *Controller) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":id")
 	entity, err := c.Repository.Read(id)
 	switch {
-	case err == ErrNotFound:
+	case errors.Is(err, ErrNotFound):
 		msg := fmt.Sprintf("%s(id:%s) not found", c.Repository.EntityName(), id)
 		c.warnf(msg)
 		RespondWithError(w, http.StatusNotFound, msg)
 		return
-	case err == ErrPermissionDenied:
+	case errors.Is(err, ErrPermissionDenied):
 		msg := fmt.Sprintf("Reading %s(id:%s): Permission denied", c.Repository.EntityName(), id)
 		c.warnf(msg)
 		RespondWithError(w, http.StatusForbidden, msg)
@@ -49,7 +50,7 @@ func (c *Controller) Get(w http.ResponseWriter, r *http.Request) {
 func (c *Controller) GetAll(w http.ResponseWriter, r *http.Request) {
 	options := c.parseOptions(r.URL.Query())
 	entities, err := c.Repository.ReadAll(options)
-	if err == ErrPermissionDenied {
+	if errors.Is(err, ErrPermissionDenied) {
 		msg := fmt.Sprintf("Error reading %s: Permission denied", c.Repository.EntityName())
 		c.warnf(msg)
 		RespondWithError(w, http.StatusForbidden, msg)
@@ -94,18 +95,18 @@ func (c *Controller) Put(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":id")
 	err = rp.Update(id, entity, fields...)
 	switch {
-	case err == ErrNotFound:
+	case errors.Is(err, ErrNotFound):
 		msg := fmt.Sprintf("%s not found", c.Repository.EntityName())
 		c.warnf(msg)
 		RespondWithError(w, http.StatusNotFound, msg)
 		return
-	case err == ErrPermissionDenied:
+	case errors.Is(err, ErrPermissionDenied):
 		msg := fmt.Sprintf("Updating %s: Permission denied", c.Repository.EntityName())
 		c.warnf(msg)
 		RespondWithError(w, http.StatusForbidden, msg)
 		return
 	case err != nil:
-		if e, ok := err.(*ValidationError); ok {
+		if e := (*ValidationError)(nil); errors.As(err, &e) {
 			c.warnf("Updating %s: %v", c.Repository.EntityName(), e.Error())
 			RespondWithJSON(w, http.StatusBadRequest, e)
 		} else {
@@ -145,13 +146,13 @@ func (c *Controller) Post(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := rp.Save(entity)
 	switch {
-	case err == ErrPermissionDenied:
+	case errors.Is(err, ErrPermissionDenied):
 		msg := fmt.Sprintf("Saving %s: Permission denied", c.Repository.EntityName())
 		c.warnf(msg)
 		RespondWithError(w, http.StatusForbidden, msg)
 		return
 	case err != nil:
-		if e, ok := err.(*ValidationError); ok {
+		if e := (*ValidationError)(nil); errors.As(err, &e) {
 			c.warnf("Saving %s: %v", c.Repository.EntityName(), e.Error())
 			RespondWithJSON(w, http.StatusBadRequest, e)
 		} else {
@@ -173,12 +174,12 @@ func (c *Controller) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get(":id")
 	err := rp.Delete(id)
 	switch {
-	case err == ErrNotFound:
+	case errors.Is(err, ErrNotFound):
 		msg := fmt.Sprintf("%s(id:%s) not found", c.Repository.EntityName(), id)
 		c.warnf(msg)
 		RespondWithError(w, http.StatusNotFound, msg)
 		return
-	case err == ErrPermissionDenied:
+	case errors.Is(err, ErrPermissionDenied):
 		msg := fmt.Sprintf("Deleting %s(id:%s): Permission denied", c.Repository.EntityName(), id)
 		c.warnf(msg)
 		RespondWithError(w, http.StatusForbidden, msg)
