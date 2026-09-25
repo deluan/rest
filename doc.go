@@ -1,33 +1,43 @@
 /*
 Package rest provides a simple REST controller compatible with the JSON Server API "dialect". This package enables the
-creation of backends for the great Admin-on-rest package using pure Go, but can be used in other scenarios where you
+creation of backends for the great React-admin framework using pure Go, but can be used in other scenarios where you
 need a simple REST server for your data.
 
-To use it, you will need to provide an implementation of the Repository interface and a function to create
-such repository.
+To use it, you need to provide an implementation of the generic Repository[T] interface for your entity type T.
+Implement Persistable[T] as well to enable the POST, PUT and DELETE methods; without it, those methods return
+405 Method Not Allowed. Every repository method receives the request's context.Context as its first parameter.
 
 The controller was created to be used with Gorilla Pat, as it requires URL params to be parsed and set
 as query params. You can easily adapt it to work with other routers and frameworks using a custom middleware.
 
 The functionality is provided by a set of handlers named after the REST verbs they handle: Get(), GetAll(), Put(),
-Post() and Delete(). Each of these functions receive a function used to construct your repository, and an optional
-implementation of Logger (compatible with Logrus). If no Logger is specified, the functions falls back to the default
-Go log package
+Post() and Delete(). Each of these functions receives your repository instance and returns an http.HandlerFunc.
+
+Errors returned by your repository are matched with errors.Is / errors.As, so they can be wrapped. ErrNotFound
+maps to 404 (for example {"error":"Thing(id:1) not found"}), ErrPermissionDenied to 403, a *ValidationError to 400
+with the field errors in the body, and any other error to 500.
 
 Example using Gorilla Pat (https://github.com/gorilla/pat):
 
-	func NewThingsRepository(ctx context) rest.Repository {
-		return &ThingsRepository{ctx: ctx}
+	type Thing struct {
+		ID   string
+		Name string
+	}
+
+	// ThingsRepository implements rest.Repository[Thing] and rest.Persistable[Thing]
+	type ThingsRepository struct {
+		// your storage, e.g. a *sql.DB
 	}
 
 	func main() {
+		repo := rest.Repository[Thing](&ThingsRepository{})
 		router := pat.New()
 
-		router.Get("/thing/{id}", rest.Get(NewThingsRepository))
-		router.Get("/thing", rest.GetAll(NewThingsRepository))
-		router.Post("/thing", rest.Post(NewThingsRepository))
-		router.Put("/thing/{id}", rest.Put(NewThingsRepository))
-		router.Delete("/thing/{id}", rest.Delete(NewThingsRepository))
+		router.Get("/thing/{id}", rest.Get(repo))
+		router.Get("/thing", rest.GetAll(repo))
+		router.Post("/thing", rest.Post(repo))
+		router.Put("/thing/{id}", rest.Put(repo))
+		router.Delete("/thing/{id}", rest.Delete(repo))
 
 		http.Handle("/", router)
 
@@ -38,15 +48,16 @@ Example using Gorilla Pat (https://github.com/gorilla/pat):
 Example using chi router (https://github.com/go-chi/chi):
 
 	func main() {
+		repo := rest.Repository[Thing](&ThingsRepository{})
 		router := chi.NewRouter()
 
 		router.Route("/thing", func(r chi.Router) {
-			r.Get("/", rest.GetAll(NewThingsRepository))
-			r.Post("/", rest.Post(NewThingsRepository))
+			r.Get("/", rest.GetAll(repo))
+			r.Post("/", rest.Post(repo))
 			r.Route("/{id:[0-9]+}", func(r chi.Router) {
-				r.With(urlParams).Get("/", rest.Get(NewThingsRepository))
-				r.With(urlParams).Put("/", rest.Put(NewThingsRepository))
-				r.With(urlParams).Delete("/", rest.Delete(NewThingsRepository))
+				r.With(urlParams).Get("/", rest.Get(repo))
+				r.With(urlParams).Put("/", rest.Put(repo))
+				r.With(urlParams).Delete("/", rest.Delete(repo))
 			})
 		})
 
@@ -80,7 +91,8 @@ Example using chi router (https://github.com/go-chi/chi):
 	}
 
 For more info see:
+
 	JSON Server: https://github.com/typicode/json-server
-	admin-on-rest: https://marmelab.com/admin-on-rest/
+	React-admin: https://marmelab.com/react-admin/
 */
 package rest
