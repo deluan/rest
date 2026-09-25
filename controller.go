@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -162,7 +163,14 @@ func (c *Controller[T]) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller[T]) entityName() string {
-	return strings.TrimPrefix(fmt.Sprintf("%T", (*T)(nil)), "*")
+	t := reflect.TypeOf((*T)(nil)).Elem()
+	name := t.Name()
+	if name == "" {
+		return t.String()
+	}
+	// Generic instantiations carry their fully-qualified type arguments: "Foo[pkg/path.Bar]"
+	name, _, _ = strings.Cut(name, "[")
+	return name
 }
 
 func (c *Controller[T]) parseFilters(params url.Values) (map[string]any, error) {
